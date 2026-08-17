@@ -27,51 +27,53 @@ route.use(helmet({
     })
 );
 
-const allowedOrigin = process.env.FRONTEND_URL?.trim();
+const allowedOrigins = [
+    "http://localhost:5173",
+    "https://trustgates.co.in"
+];
 
 route.use(cors({
-        origin: (origin, callback) => {
+    origin: (origin, callback) => {
 
-            // Postman / server-to-server
-            if (!origin) {
-                return callback(null, true);
-            }
+        // Postman / server-to-server
+        if (!origin) {
+            return callback(null, true);
+        }
 
-            if (origin === allowedOrigin) {
-                return callback(null, true);
-            }
+        if (allowedOrigins.includes(origin)) {
+            return callback(null, true);
+        }
 
-            return callback(
-                new Error(
-                    "CORS origin not allowed."
-                )
-            );
-        },
+        return callback(
+            new Error(
+                "CORS origin not allowed."
+            )
+        );
+    },
 
-        credentials: true,
+    credentials: true,
 
-        methods: [
-            "GET",
-            "POST",
-            "PUT",
-            "PATCH",
-            "DELETE",
-            "OPTIONS"
-        ],
+    methods: [
+        "GET",
+        "POST",
+        "PUT",
+        "PATCH",
+        "DELETE",
+        "OPTIONS"
+    ],
 
-        allowedHeaders: [
-            "Content-Type",
-            "Authorization",
-            "X-Request-ID"
-        ],
+    allowedHeaders: [
+        "Content-Type",
+        "Authorization",
+        "X-Request-ID"
+    ],
 
-        exposedHeaders: [
-            "X-RateLimit-Limit",
-            "X-RateLimit-Remaining",
-            "Retry-After"
-        ]
-    })
-);
+    exposedHeaders: [
+        "X-RateLimit-Limit",
+        "X-RateLimit-Remaining",
+        "Retry-After"
+    ]
+}));
 
 route.use(auditContext);
 route.use(requestIdMiddleware);
