@@ -570,52 +570,57 @@ const DASHBOARD_QUERIES = Object.freeze({
     // ==========================================================
     // RECENT TRANSACTIONS
     // ==========================================================
-GET_RECENT_TRANSACTIONS: `
+ GET_RECENT_TRANSACTIONS: `
 
-    SELECT
+        SELECT
 
-        t.transaction_id,
-        t.transaction_ref,
+            t.transaction_id,
 
-        t.order_id,
+            t.order_id,
 
-        t.gateway_payment_id AS payment_id,
+            t.gateway_payment_id AS payment_id,
 
-        t.merchant_id,
+            t.merchant_id,
 
-        t.customer_name,
-        t.customer_email,
-        t.customer_phone,
+            t.customer_name,
 
-        t.amount,
-        t.currency,
+            t.customer_email,
 
-        t.payment_method,
+            t.customer_phone,
 
-        t.status AS transaction_status,
+            t.amount,
 
-        t.gateway_response,
+            t.currency,
 
-        t.created_at AS created_date,
+            t.payment_method,
 
-        t.settled_at AS settlement_date
+            t.status AS transaction_status,
 
-    FROM transactions t
+            t.gateway_response,
 
-    WHERE t.payment_type = ?
+            t.created_at AS created_date,
 
-      AND (
-            ? IS NULL
-            OR t.merchant_id = ?
-      )
+            t.settled_at AS settlement_date
 
-    ORDER BY
-        t.created_at DESC,
-        t.transaction_id DESC
+        FROM transactions t
 
-    LIMIT 20
+        WHERE t.payment_type = ?
 
-`,
+          AND t.created_at >= ?
+
+          AND t.created_at < ?
+
+          AND (
+                ? IS NULL
+                OR t.merchant_id = ?
+          )
+
+        ORDER BY
+            t.created_at DESC
+
+        LIMIT 20
+
+    `,
     // ==========================================================
     // PAYMENT METHOD ANALYTICS
     // ==========================================================
