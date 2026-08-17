@@ -570,8 +570,7 @@ const DASHBOARD_QUERIES = Object.freeze({
     // ==========================================================
     // RECENT TRANSACTIONS
     // ==========================================================
-
-    GET_RECENT_TRANSACTIONS: `
+GET_RECENT_TRANSACTIONS: `
 
     SELECT
 
@@ -604,10 +603,6 @@ const DASHBOARD_QUERIES = Object.freeze({
     FROM transactions t
 
     WHERE t.payment_type = ?
-
-      AND t.created_at >= ?
-
-      AND t.created_at < ?
 
       AND (
             ? IS NULL
