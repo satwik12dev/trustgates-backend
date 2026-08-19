@@ -507,8 +507,8 @@ const uploadKycService = async (
 
                         verified_at = NULL,
 
-                        updated_at = NOW()
-
+                        updated_at = NOW(),
+                        kyc_submitted = TRUE
                     WHERE merchant_id = ?
 
                       AND kyc_status = 'REJECTED'
@@ -542,36 +542,28 @@ const uploadKycService = async (
 
             await connection.query(
 
-                `
-                    INSERT INTO merchant_kyc
-                    (
-                        merchant_id,
-
-                        pan_number,
-
-                        aadhaar_number,
-
-                        pan_document,
-
-                        aadhaar_document,
-
-                        kyc_status,
-
-                        kyc_resubmission_allowed
-
-                    )
-
-                    VALUES
-                    (
-                        ?,
-                        ?,
-                        ?,
-                        ?,
-                        ?,
-                        'PENDING',
-                        FALSE
-                    )
-                `,
+                `INSERT INTO merchant_kyc
+(
+    merchant_id,
+    pan_number,
+    aadhaar_number,
+    pan_document,
+    aadhaar_document,
+    kyc_status,
+    kyc_resubmission_allowed,
+    kyc_submitted
+)
+VALUES
+(
+    ?,
+    ?,
+    ?,
+    ?,
+    ?,
+    'PENDING',
+    FALSE,
+    TRUE
+)`
 
                 [
 
