@@ -570,8 +570,7 @@ const DASHBOARD_QUERIES = Object.freeze({
     // ==========================================================
     // RECENT TRANSACTIONS
     // ==========================================================
-
-    GET_RECENT_TRANSACTIONS: `
+ GET_RECENT_TRANSACTIONS: `
 
         SELECT
 
@@ -622,8 +621,6 @@ const DASHBOARD_QUERIES = Object.freeze({
         LIMIT 20
 
     `,
-
-
     // ==========================================================
     // PAYMENT METHOD ANALYTICS
     // ==========================================================
