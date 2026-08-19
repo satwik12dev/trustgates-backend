@@ -24,7 +24,9 @@ const GET_ALL_MERCHANT_KYC = `
         mk.verified_at,
 
         mk.created_at,
-        mk.updated_at
+        mk.updated_at,
+
+        mk.kyc_submitted
 
     FROM merchant_kyc mk
 
@@ -66,7 +68,8 @@ const GET_MERCHANT_KYC_BY_ID = `
         mk.verified_at,
 
         mk.created_at,
-        mk.updated_at
+        mk.updated_at,
+        mk.kyc_submitted,
 
     FROM merchant_kyc mk
 
