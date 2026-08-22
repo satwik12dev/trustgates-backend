@@ -9,8 +9,7 @@ const db = require(
 
 // ==========================================================
 // Helper: Number Normalizer
-// =========================================================
-
+// ==========================================================
 
 const toNumber = (value) => {
 
@@ -181,19 +180,20 @@ const buildDateRange = ({
 
 
         const nextDate =
-    getNextDate(
-        formattedEndDate
-    );
+            getNextDate(
+                formattedDate
+            );
 
-return {
 
-    startDate:
-        `${formattedStartDate} 00:00:00`,
+        return {
 
-    endDate:
-        `${nextDate} 00:00:00`
+            startDate:
+                `${formattedDate} 00:00:00`,
 
-};
+            endDate:
+                `${nextDate} 00:00:00`
+
+        };
 
     }
 
@@ -218,13 +218,19 @@ return {
             );
 
 
+        const nextDate =
+            getNextDate(
+                formattedEndDate
+            );
+
+
         return {
 
             startDate:
                 `${formattedStartDate} 00:00:00`,
 
             endDate:
-                `${formattedEndDate} 00:00:00`
+                `${nextDate} 00:00:00`
 
         };
 
@@ -275,34 +281,54 @@ const normalizeSummary = (summary) => {
     return {
 
         totalTransactions:
-            toNumber(data.total_transactions),
+            toNumber(
+                data.total_transactions
+            ),
 
         successfulTransactions:
-            toNumber(data.successful_transactions),
+            toNumber(
+                data.successful_transactions
+            ),
 
         failedTransactions:
-            toNumber(data.failed_transactions),
+            toNumber(
+                data.failed_transactions
+            ),
 
         pendingTransactions:
-            toNumber(data.pending_transactions),
+            toNumber(
+                data.pending_transactions
+            ),
 
         createdTransactions:
-            toNumber(data.created_transactions),
+            toNumber(
+                data.created_transactions
+            ),
 
         authorizedTransactions:
-            toNumber(data.authorized_transactions),
+            toNumber(
+                data.authorized_transactions
+            ),
 
         cancelledTransactions:
-            toNumber(data.cancelled_transactions),
+            toNumber(
+                data.cancelled_transactions
+            ),
 
         refundedTransactions:
-            toNumber(data.refunded_transactions),
+            toNumber(
+                data.refunded_transactions
+            ),
 
         partiallyRefundedTransactions:
-            toNumber(data.partially_refunded_transactions),
+            toNumber(
+                data.partially_refunded_transactions
+            ),
 
         chargebackTransactions:
-            toNumber(data.chargeback_transactions)
+            toNumber(
+                data.chargeback_transactions
+            )
 
     };
 
@@ -391,70 +417,73 @@ const normalizeTopMerchants = (merchants) => {
         return [];
     }
 
-    return merchants.map((merchant) => ({
 
-        merchantId:
-            merchant.merchant_id,
+    return merchants.map(
+        (merchant) => ({
 
-        businessName:
-            merchant.business_name,
+            merchantId:
+                merchant.merchant_id,
 
-        totalTransactions:
-            toNumber(
-                merchant.total_transactions
-            ),
+            businessName:
+                merchant.business_name,
 
-        successfulTransactions:
-            toNumber(
-                merchant.successful_transactions
-            ),
+            totalTransactions:
+                toNumber(
+                    merchant.total_transactions
+                ),
 
-        createdTransactions:
-            toNumber(
-                merchant.created_transactions
-            ),
+            successfulTransactions:
+                toNumber(
+                    merchant.successful_transactions
+                ),
 
-        pendingTransactions:
-            toNumber(
-                merchant.pending_transactions
-            ),
+            createdTransactions:
+                toNumber(
+                    merchant.created_transactions
+                ),
 
-        authorizedTransactions:
-            toNumber(
-                merchant.authorized_transactions
-            ),
+            pendingTransactions:
+                toNumber(
+                    merchant.pending_transactions
+                ),
 
-        failedTransactions:
-            toNumber(
-                merchant.failed_transactions
-            ),
+            authorizedTransactions:
+                toNumber(
+                    merchant.authorized_transactions
+                ),
 
-        cancelledTransactions:
-            toNumber(
-                merchant.cancelled_transactions
-            ),
+            failedTransactions:
+                toNumber(
+                    merchant.failed_transactions
+                ),
 
-        refundedTransactions:
-            toNumber(
-                merchant.refunded_transactions
-            ),
+            cancelledTransactions:
+                toNumber(
+                    merchant.cancelled_transactions
+                ),
 
-        partiallyRefundedTransactions:
-            toNumber(
-                merchant.partially_refunded_transactions
-            ),
+            refundedTransactions:
+                toNumber(
+                    merchant.refunded_transactions
+                ),
 
-        chargebackTransactions:
-            toNumber(
-                merchant.chargeback_transactions
-            ),
+            partiallyRefundedTransactions:
+                toNumber(
+                    merchant.partially_refunded_transactions
+                ),
 
-        revenue:
-            toNumber(
-                merchant.revenue
-            )
+            chargebackTransactions:
+                toNumber(
+                    merchant.chargeback_transactions
+                ),
 
-    }));
+            revenue:
+                toNumber(
+                    merchant.revenue
+                )
+
+        })
+    );
 
 };
 
@@ -514,27 +543,26 @@ const getAdminDashboard = async ({
         // ==================================================
         // DASHBOARD SUMMARY
         // ==================================================
-        // IMPORTANT:
-        // No date filter here.
-        //
-        // Summary is overall/lifetime for:
-        // - selected payment type
-        // - optional merchant
+        // Lifetime / overall summary.
+        // No payment type filter.
+        // No date filter.
+        // No merchant filter.
         // ==================================================
 
-        const [summaryRows] =
-            await connection.query(
+        const [
+            summaryRows
+        ] = await connection.query(
 
-                DASHBOARD_QUERIES
-                    .GET_DASHBOARD_SUMMARY,
+            DASHBOARD_QUERIES
+                .GET_DASHBOARD_SUMMARY
 
-            );
+        );
 
 
         // ==================================================
         // REFUND COUNT
         // ==================================================
-        // Selected date range
+        // Selected date range.
         // ==================================================
 
         const [
@@ -562,7 +590,8 @@ const getAdminDashboard = async ({
         // ==================================================
         // TODAY'S REVENUE
         // ==================================================
-        // Always current day
+        // Current day.
+        // Payment type + optional merchant.
         // ==================================================
 
         const todayRange =
@@ -577,10 +606,18 @@ const getAdminDashboard = async ({
                 .GET_TODAYS_REVENUE,
 
             [
-    paymentType,
-    merchantId,
-    merchantId
-]
+
+                paymentType,
+
+                todayRange.startDate,
+
+                todayRange.endDate,
+
+                merchantId,
+
+                merchantId
+
+            ]
 
         );
 
@@ -588,7 +625,8 @@ const getAdminDashboard = async ({
         // ==================================================
         // MONTHLY REVENUE
         // ==================================================
-        // Current calendar month
+        // Current calendar month.
+        // Payment type + optional merchant.
         // ==================================================
 
         const [
@@ -618,8 +656,7 @@ const getAdminDashboard = async ({
         // ==================================================
         // AVAILABLE BALANCE
         // ==================================================
-        // Current balance
-        // No date filter
+        // Current balance.
         // ==================================================
 
         const [
@@ -643,8 +680,7 @@ const getAdminDashboard = async ({
         // ==================================================
         // SETTLED AMOUNT
         // ==================================================
-        // Cumulative settled amount
-        // No date filter
+        // Cumulative settled amount.
         // ==================================================
 
         const [
@@ -668,33 +704,48 @@ const getAdminDashboard = async ({
         // ==================================================
         // TOP MERCHANTS
         // ==================================================
-        // IMPORTANT:
-        // No PAYIN/PAYOUT filter.
-        // Date range is applied.
+        // Selected payment type + selected date range.
         // ==================================================
 
         const safeLimit =
-    Number(limit) > 0
-        ? Math.min(Number(limit), 100)
-        : 10;
+            Number(limit) > 0
+                ? Math.min(
+                    Number(limit),
+                    100
+                )
+                : 10;
 
-const [topMerchantRows] = await connection.query(
-    DASHBOARD_QUERIES.GET_TOP_MERCHANTS,
-    [
-        paymentType,
-        selectedRange.startDate,
-        selectedRange.endDate,
-        merchantId,
-        merchantId,
-        safeLimit
-    ]
-);
+
+        const [
+            topMerchantRows
+        ] = await connection.query(
+
+            DASHBOARD_QUERIES
+                .GET_TOP_MERCHANTS,
+
+            [
+
+                paymentType,
+
+                selectedRange.startDate,
+
+                selectedRange.endDate,
+
+                merchantId,
+
+                merchantId,
+
+                safeLimit
+
+            ]
+
+        );
 
 
         // ==================================================
         // TRANSACTION VOLUME
         // ==================================================
-        // Selected date range
+        // Selected payment type + selected date range.
         // ==================================================
 
         const [
@@ -724,7 +775,7 @@ const [topMerchantRows] = await connection.query(
         // ==================================================
         // SUCCESS RATE
         // ==================================================
-        // Selected date range
+        // Selected payment type + selected date range.
         // ==================================================
 
         const [
@@ -808,6 +859,7 @@ const [topMerchantRows] = await connection.query(
 
             },
 
+
             // ==================================================
             // SUMMARY
             // ==================================================
@@ -844,6 +896,7 @@ const [topMerchantRows] = await connection.query(
 
             },
 
+
             // ==================================================
             // TOP MERCHANTS
             // ==================================================
@@ -853,12 +906,14 @@ const [topMerchantRows] = await connection.query(
                     topMerchantRows
                 ),
 
+
             // ==================================================
             // TRANSACTION VOLUME
             // ==================================================
 
             transactionVolume:
                 transactionVolumeRows,
+
 
             // ==================================================
             // SUCCESS RATE
@@ -889,10 +944,8 @@ const [topMerchantRows] = await connection.query(
 // ==========================================================
 // GET DASHBOARD SUMMARY
 // ==========================================================
-// This is the separate:
+// Separate endpoint:
 // GET /admin/dashboard/summary
-//
-// Returns all 9 summary cards.
 // ==========================================================
 
 const getDashboardSummary = async ({
@@ -916,15 +969,7 @@ const getDashboardSummary = async ({
         ] = await connection.query(
 
             DASHBOARD_QUERIES
-                .GET_DASHBOARD_SUMMARY,
-
-            [
-                type,
-                startDate,
-                endDate,
-                merchantId,
-                merchantId
-            ]
+                .GET_DASHBOARD_SUMMARY
 
         );
 
@@ -941,10 +986,15 @@ const getDashboardSummary = async ({
                 .GET_REFUND_COUNT,
 
             [
+
                 startDate,
+
                 endDate,
+
                 merchantId,
+
                 merchantId
+
             ]
 
         );
@@ -957,12 +1007,14 @@ const getDashboardSummary = async ({
         const today =
             new Date();
 
+
         const todayStart =
             new Date(
                 today.getFullYear(),
                 today.getMonth(),
                 today.getDate()
             );
+
 
         const tomorrowStart =
             new Date(
@@ -980,11 +1032,17 @@ const getDashboardSummary = async ({
                 .GET_TODAYS_REVENUE,
 
             [
+
                 type,
+
                 todayStart,
+
                 tomorrowStart,
+
                 merchantId,
+
                 merchantId
+
             ]
 
         );
@@ -1000,6 +1058,7 @@ const getDashboardSummary = async ({
                 today.getMonth(),
                 1
             );
+
 
         const nextMonthStart =
             new Date(
@@ -1017,11 +1076,17 @@ const getDashboardSummary = async ({
                 .GET_MONTHLY_REVENUE,
 
             [
+
                 type,
+
                 monthStart,
+
                 nextMonthStart,
+
                 merchantId,
+
                 merchantId
+
             ]
 
         );
@@ -1039,8 +1104,11 @@ const getDashboardSummary = async ({
                 .GET_AVAILABLE_BALANCE,
 
             [
+
                 merchantId,
+
                 merchantId
+
             ]
 
         );
@@ -1058,8 +1126,11 @@ const getDashboardSummary = async ({
                 .GET_SETTLED_AMOUNT,
 
             [
+
                 merchantId,
+
                 merchantId
+
             ]
 
         );
@@ -1072,17 +1143,22 @@ const getDashboardSummary = async ({
         const summary =
             summaryRows[0] || {};
 
+
         const refund =
             refundRows[0] || {};
+
 
         const todaysRevenue =
             todaysRevenueRows[0] || {};
 
+
         const monthlyRevenue =
             monthlyRevenueRows[0] || {};
 
+
         const availableBalance =
             availableBalanceRows[0] || {};
+
 
         const settledAmount =
             settledAmountRows[0] || {};
@@ -1095,28 +1171,44 @@ const getDashboardSummary = async ({
         return {
 
             totalTransactions:
-                toNumber(summary.total_transactions),
+                toNumber(
+                    summary.total_transactions
+                ),
 
             successfulTransactions:
-                toNumber(summary.successful_transactions),
+                toNumber(
+                    summary.successful_transactions
+                ),
 
             failedTransactions:
-                toNumber(summary.failed_transactions),
+                toNumber(
+                    summary.failed_transactions
+                ),
 
             pendingTransactions:
-                toNumber(summary.pending_transactions),
+                toNumber(
+                    summary.pending_transactions
+                ),
 
             createdTransactions:
-                toNumber(summary.created_transactions),
+                toNumber(
+                    summary.created_transactions
+                ),
 
             authorizedTransactions:
-                toNumber(summary.authorized_transactions),
+                toNumber(
+                    summary.authorized_transactions
+                ),
 
             cancelledTransactions:
-                toNumber(summary.cancelled_transactions),
+                toNumber(
+                    summary.cancelled_transactions
+                ),
 
             refundedTransactions:
-                toNumber(summary.refunded_transactions),
+                toNumber(
+                    summary.refunded_transactions
+                ),
 
             partiallyRefundedTransactions:
                 toNumber(
@@ -1129,13 +1221,19 @@ const getDashboardSummary = async ({
                 ),
 
             refundCount:
-                toNumber(refund.refund_count),
+                toNumber(
+                    refund.refund_count
+                ),
 
             todaysRevenue:
-                toNumber(todaysRevenue.todays_revenue),
+                toNumber(
+                    todaysRevenue.todays_revenue
+                ),
 
             monthlyRevenue:
-                toNumber(monthlyRevenue.monthly_revenue),
+                toNumber(
+                    monthlyRevenue.monthly_revenue
+                ),
 
             availableBalance:
                 toNumber(
@@ -1157,16 +1255,9 @@ const getDashboardSummary = async ({
 
 };
 
+
 // ==========================================================
 // GET RECENT TRANSACTIONS
-// ==========================================================
-// Returns latest 20 transactions.
-//
-// Filters:
-// - type: PAYIN / PAYOUT
-// - merchantId: optional
-// - startDate
-// - endDate
 // ==========================================================
 
 const getRecentTransactions = async ({
@@ -1180,10 +1271,6 @@ const getRecentTransactions = async ({
         await db.getConnection();
 
     try {
-
-        // ==================================================
-        // Fetch Latest 20 Transactions
-        // ==================================================
 
         const [
             rows
@@ -1208,10 +1295,6 @@ const getRecentTransactions = async ({
 
         );
 
-
-        // ==================================================
-        // Normalize Response
-        // ==================================================
 
         return rows.map(
             (transaction) => ({
@@ -1271,22 +1354,9 @@ const getRecentTransactions = async ({
 
 };
 
+
 // ==========================================================
 // GET TRANSACTION VOLUME
-// ==========================================================
-// Date-wise transaction volume.
-//
-// Returns:
-// - Total transactions
-// - Successful transactions
-// - Failed transactions
-// - Pending transactions
-//
-// Filters:
-// - type: PAYIN / PAYOUT
-// - merchantId: optional
-// - startDate
-// - endDate
 // ==========================================================
 
 const getTransactionVolume = async ({
@@ -1301,10 +1371,6 @@ const getTransactionVolume = async ({
 
     try {
 
-        // ==================================================
-        // Fetch Transaction Volume
-        // ==================================================
-
         const [
             rows
         ] = await connection.query(
@@ -1313,6 +1379,7 @@ const getTransactionVolume = async ({
                 .GET_TRANSACTION_VOLUME,
 
             [
+
                 type,
 
                 startDate,
@@ -1322,23 +1389,25 @@ const getTransactionVolume = async ({
                 merchantId,
 
                 merchantId
+
             ]
 
         );
 
-
-        // ==================================================
-        // Normalize Response
-        // ==================================================
 
         return rows.map(
             (row) => ({
 
                 date:
                     row.report_date
-                        ? new Date(row.report_date)
+                        ? new Date(
+                            row.report_date
+                        )
                             .toISOString()
-                            .slice(0, 10)
+                            .slice(
+                                0,
+                                10
+                            )
                         : null,
 
                 totalTransactions:
@@ -1402,6 +1471,7 @@ const getTransactionVolume = async ({
 
 };
 
+
 // ==========================================================
 // GET SUCCESS RATE
 // ==========================================================
@@ -1426,6 +1496,7 @@ const getSuccessRate = async ({
                 .GET_SUCCESS_RATE,
 
             [
+
                 type,
 
                 startDate,
@@ -1435,6 +1506,7 @@ const getSuccessRate = async ({
                 merchantId,
 
                 merchantId
+
             ]
 
         );
@@ -1489,6 +1561,7 @@ const getSuccessRate = async ({
 
 };
 
+
 // ==========================================================
 // GET PAYMENT METHOD ANALYTICS
 // ==========================================================
@@ -1513,6 +1586,7 @@ const getPaymentMethodAnalytics = async ({
                 .GET_PAYMENT_METHOD_ANALYTICS,
 
             [
+
                 type,
 
                 startDate,
@@ -1522,6 +1596,7 @@ const getPaymentMethodAnalytics = async ({
                 merchantId,
 
                 merchantId
+
             ]
 
         );
@@ -1599,6 +1674,7 @@ const getPaymentMethodAnalytics = async ({
 
 };
 
+
 // ==========================================================
 // GET TRANSACTION STATUS ANALYTICS
 // ==========================================================
@@ -1623,6 +1699,7 @@ const getTransactionStatusAnalytics = async ({
                 .GET_TRANSACTION_STATUS_ANALYTICS,
 
             [
+
                 type,
 
                 startDate,
@@ -1632,6 +1709,7 @@ const getTransactionStatusAnalytics = async ({
                 merchantId,
 
                 merchantId
+
             ]
 
         );
@@ -1682,24 +1760,44 @@ const getTopMerchants = async ({
 
     try {
 
-        const [rows] =
-            await connection.query(
+        const safeLimit =
+            Number(limit) > 0
+                ? Math.min(
+                    Number(limit),
+                    100
+                )
+                : 10;
 
-                DASHBOARD_QUERIES
-                    .GET_TOP_MERCHANTS,
 
-                [
-                    paymentType,
-                    startDate,
-                    endDate,
-                    merchantId,
-                    merchantId,
-                    limit
-                ]
+        const [
+            rows
+        ] = await connection.query(
 
-            );
+            DASHBOARD_QUERIES
+                .GET_TOP_MERCHANTS,
 
-        return normalizeTopMerchants(rows);
+            [
+
+                paymentType,
+
+                startDate,
+
+                endDate,
+
+                merchantId,
+
+                merchantId,
+
+                safeLimit
+
+            ]
+
+        );
+
+
+        return normalizeTopMerchants(
+            rows
+        );
 
     } finally {
 
@@ -1708,6 +1806,7 @@ const getTopMerchants = async ({
     }
 
 };
+
 
 // ==========================================================
 // TRANSACTIONS SERVICE
@@ -1731,27 +1830,25 @@ const getTransactions = async ({
 
     try {
 
-        // ==================================================
-        // Pagination
-        // ==================================================
-
         const currentPage =
             Number(page) > 0
                 ? Number(page)
                 : 1;
 
+
         const currentLimit =
             Number(limit) > 0
-                ? Math.min(Number(limit), 100)
+                ? Math.min(
+                    Number(limit),
+                    100
+                )
                 : 20;
 
+
         const offset =
-            (currentPage - 1) * currentLimit;
+            (currentPage - 1) *
+            currentLimit;
 
-
-        // ==================================================
-        // Normalize empty values
-        // ==================================================
 
         const normalizedPaymentType =
             paymentType || null;
@@ -1779,10 +1876,6 @@ const getTransactions = async ({
                 ? search.trim()
                 : null;
 
-
-        // ==================================================
-        // Query
-        // ==================================================
 
         const [
             rows
@@ -1828,101 +1921,111 @@ const getTransactions = async ({
         );
 
 
-        // ==================================================
-        // Response Mapping
-        // ==================================================
-
         const transactions =
-            rows.map((row) => ({
+            rows.map(
+                (row) => ({
 
-                transactionId:
-                    row.transaction_id,
+                    transactionId:
+                        row.transaction_id,
 
-                transactionRef:
-                    row.transaction_ref,
+                    transactionRef:
+                        row.transaction_ref,
 
-                merchantId:
-                    row.merchant_id,
+                    merchantId:
+                        row.merchant_id,
 
-                businessName:
-                    row.business_name,
+                    businessName:
+                        row.business_name,
 
-                orderId:
-                    row.order_id,
+                    orderId:
+                        row.order_id,
 
-                gatewayOrderId:
-                    row.gateway_order_id,
+                    gatewayOrderId:
+                        row.gateway_order_id,
 
-                gatewayPaymentId:
-                    row.gateway_payment_id,
+                    gatewayPaymentId:
+                        row.gateway_payment_id,
 
-                gatewayReference:
-                    row.gateway_reference,
+                    gatewayReference:
+                        row.gateway_reference,
 
-                customerName:
-                    row.customer_name,
+                    customerName:
+                        row.customer_name,
 
-                customerEmail:
-                    row.customer_email,
+                    customerEmail:
+                        row.customer_email,
 
-                customerPhone:
-                    row.customer_phone,
+                    customerPhone:
+                        row.customer_phone,
 
-                amount:
-                    Number(row.amount),
+                    amount:
+                        Number(
+                            row.amount
+                        ),
 
-                currency:
-                    row.currency,
+                    currency:
+                        row.currency,
 
-                paymentMethod:
-                    row.payment_method,
+                    paymentMethod:
+                        row.payment_method,
 
-                gatewayName:
-                    row.gateway_name,
+                    gatewayName:
+                        row.gateway_name,
 
-                paymentType:
-                    row.payment_type,
+                    paymentType:
+                        row.payment_type,
 
-                status:
-                    row.status,
+                    status:
+                        row.status,
 
-                merchantFee:
-                    Number(row.merchant_fee),
+                    merchantFee:
+                        Number(
+                            row.merchant_fee
+                        ),
 
-                gatewayFee:
-                    Number(row.gateway_fee),
+                    gatewayFee:
+                        Number(
+                            row.gateway_fee
+                        ),
 
-                gatewayTax:
-                    Number(row.gateway_tax),
+                    gatewayTax:
+                        Number(
+                            row.gateway_tax
+                        ),
 
-                netAmount:
-                    Number(row.net_amount),
+                    netAmount:
+                        Number(
+                            row.net_amount
+                        ),
 
-                settlementStatus:
-                    row.settlement_status,
+                    settlementStatus:
+                        row.settlement_status,
 
-                settledAt:
-                    row.settled_at,
+                    settledAt:
+                        row.settled_at,
 
-                failureCode:
-                    row.failure_code,
+                    failureCode:
+                        row.failure_code,
 
-                failureMessage:
-                    row.failure_message,
+                    failureMessage:
+                        row.failure_message,
 
-                attemptCount:
-                    Number(row.attempt_count),
+                    attemptCount:
+                        Number(
+                            row.attempt_count
+                        ),
 
-                createdAt:
-                    row.created_at,
+                    createdAt:
+                        row.created_at,
 
-                completedAt:
-                    row.completed_at,
+                    completedAt:
+                        row.completed_at,
 
-                updatedAt:
-                    row.updated_at
+                    updatedAt:
+                        row.updated_at
 
-            }));
+                })
+            );
 
 
         return {
@@ -1966,7 +2069,10 @@ const getLatestTransactions = async ({
 
         const currentLimit =
             Number(limit) > 0
-                ? Math.min(Number(limit), 50)
+                ? Math.min(
+                    Number(limit),
+                    50
+                )
                 : 10;
 
 
@@ -2000,69 +2106,81 @@ const getLatestTransactions = async ({
 
 
         const transactions =
-            rows.map((row) => ({
+            rows.map(
+                (row) => ({
 
-                transactionId:
-                    row.transaction_id,
+                    transactionId:
+                        row.transaction_id,
 
-                transactionRef:
-                    row.transaction_ref,
+                    transactionRef:
+                        row.transaction_ref,
 
-                merchantId:
-                    row.merchant_id,
+                    merchantId:
+                        row.merchant_id,
 
-                businessName:
-                    row.business_name,
+                    businessName:
+                        row.business_name,
 
-                orderId:
-                    row.order_id,
+                    orderId:
+                        row.order_id,
 
-                customerName:
-                    row.customer_name,
+                    customerName:
+                        row.customer_name,
 
-                customerEmail:
-                    row.customer_email,
+                    customerEmail:
+                        row.customer_email,
 
-                amount:
-                    Number(row.amount),
+                    amount:
+                        Number(
+                            row.amount
+                        ),
 
-                currency:
-                    row.currency,
+                    currency:
+                        row.currency,
 
-                paymentMethod:
-                    row.payment_method,
+                    paymentMethod:
+                        row.payment_method,
 
-                gatewayName:
-                    row.gateway_name,
+                    gatewayName:
+                        row.gateway_name,
 
-                paymentType:
-                    row.payment_type,
+                    paymentType:
+                        row.payment_type,
 
-                status:
-                    row.status,
+                    status:
+                        row.status,
 
-                merchantFee:
-                    Number(row.merchant_fee),
+                    merchantFee:
+                        Number(
+                            row.merchant_fee
+                        ),
 
-                gatewayFee:
-                    Number(row.gateway_fee),
+                    gatewayFee:
+                        Number(
+                            row.gateway_fee
+                        ),
 
-                gatewayTax:
-                    Number(row.gateway_tax),
+                    gatewayTax:
+                        Number(
+                            row.gateway_tax
+                        ),
 
-                netAmount:
-                    Number(row.net_amount),
+                    netAmount:
+                        Number(
+                            row.net_amount
+                        ),
 
-                settlementStatus:
-                    row.settlement_status,
+                    settlementStatus:
+                        row.settlement_status,
 
-                createdAt:
-                    row.created_at,
+                    createdAt:
+                        row.created_at,
 
-                completedAt:
-                    row.completed_at
+                    completedAt:
+                        row.completed_at
 
-            }));
+                })
+            );
 
 
         return {
@@ -2222,7 +2340,10 @@ const getTransactionDashboard = async ({
         connection.release();
 
     }
+
 };
+
+
 // ==========================================================
 // GET TRANSACTION BY ID
 // ==========================================================
@@ -2244,7 +2365,9 @@ const getTransactionById = async (
                 .GET_TRANSACTION_BY_ID,
 
             [
+
                 transactionId
+
             ]
 
         );
@@ -2257,7 +2380,8 @@ const getTransactionById = async (
         }
 
 
-        const row = rows[0];
+        const row =
+            rows[0];
 
 
         return {
@@ -2292,24 +2416,44 @@ const getTransactionById = async (
                     return null;
                 }
 
-                let response = row.gateway_response;
 
-                if (typeof response === "string") {
+                let response =
+                    row.gateway_response;
+
+
+                if (
+                    typeof response === "string"
+                ) {
+
                     try {
-                        response = JSON.parse(response);
+
+                        response =
+                            JSON.parse(
+                                response
+                            );
+
                     } catch (error) {
+
                         return row.gateway_response;
+
                     }
+
                 }
+
 
                 if (
                     response &&
                     response.amount !== undefined &&
                     response.amount !== null
                 ) {
+
                     response.amount =
-                        Number(response.amount) / 100;
+                        Number(
+                            response.amount
+                        ) / 100;
+
                 }
+
 
                 return response;
 
@@ -2325,7 +2469,9 @@ const getTransactionById = async (
                 row.customer_phone,
 
             amount:
-                Number(row.amount),
+                Number(
+                    row.amount
+                ),
 
             currency:
                 row.currency,
@@ -2346,16 +2492,24 @@ const getTransactionById = async (
                 row.completion_source,
 
             merchantFee:
-                Number(row.merchant_fee),
+                Number(
+                    row.merchant_fee
+                ),
 
             gatewayFee:
-                Number(row.gateway_fee),
+                Number(
+                    row.gateway_fee
+                ),
 
             gatewayTax:
-                Number(row.gateway_tax),
+                Number(
+                    row.gateway_tax
+                ),
 
             netAmount:
-                Number(row.net_amount),
+                Number(
+                    row.net_amount
+                ),
 
             settlementStatus:
                 row.settlement_status,
@@ -2370,7 +2524,9 @@ const getTransactionById = async (
                 row.failure_message,
 
             attemptCount:
-                Number(row.attempt_count),
+                Number(
+                    row.attempt_count
+                ),
 
             expiresAt:
                 row.expires_at,
@@ -2405,6 +2561,8 @@ const getTransactionById = async (
     }
 
 };
+
+
 // ==========================================================
 // EXPORT
 // ==========================================================
@@ -2416,15 +2574,25 @@ module.exports = {
     getDashboardSummary,
 
     buildDateRange,
+
     getRecentTransactions,
+
     getTransactionVolume,
+
     getSuccessRate,
+
     getPaymentMethodAnalytics,
+
     getTransactionStatusAnalytics,
+
     getTopMerchants,
+
     getTransactions,
+
     getLatestTransactions,
+
     getTransactionDashboard,
+
     getTransactionById
 
 };
