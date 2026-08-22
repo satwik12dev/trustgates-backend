@@ -4,95 +4,87 @@ const DASHBOARD_QUERIES = Object.freeze({
     // DASHBOARD SUMMARY
     // ==========================================================
 
-    GET_DASHBOARD_SUMMARY: `
+   GET_DASHBOARD_SUMMARY: `
 
-        SELECT
+    SELECT
 
-            COUNT(*) AS total_transactions,
+        COUNT(*) AS total_transactions,
 
-            SUM(
-                CASE
-                    WHEN status = 'SUCCESS'
-                    THEN 1
-                    ELSE 0
-                END
-            ) AS successful_transactions,
+        SUM(
+            CASE
+                WHEN status = 'SUCCESS'
+                THEN 1
+                ELSE 0
+            END
+        ) AS successful_transactions,
 
-            SUM(
-                CASE
-                    WHEN status = 'FAILED'
-                    THEN 1
-                    ELSE 0
-                END
-            ) AS failed_transactions,
+        SUM(
+            CASE
+                WHEN status = 'FAILED'
+                THEN 1
+                ELSE 0
+            END
+        ) AS failed_transactions,
 
-            SUM(
-                CASE
-                    WHEN status IN (
-                        'PENDING'
-                    )
-                    THEN 1
-                    ELSE 0
-                END
-            ) AS pending_transactions,
+        SUM(
+            CASE
+                WHEN status = 'PENDING'
+                THEN 1
+                ELSE 0
+            END
+        ) AS pending_transactions,
 
-            SUM(
-                CASE
-                    WHEN status = 'CREATED'
-                    THEN 1
-                    ELSE 0
-                END
-            ) AS created_transactions,
+        SUM(
+            CASE
+                WHEN status = 'CREATED'
+                THEN 1
+                ELSE 0
+            END
+        ) AS created_transactions,
 
-            SUM(
-                CASE
-                    WHEN status = 'AUTHORIZED'
-                    THEN 1
-                    ELSE 0
-                END
-            ) AS authorized_transactions,
+        SUM(
+            CASE
+                WHEN status = 'AUTHORIZED'
+                THEN 1
+                ELSE 0
+            END
+        ) AS authorized_transactions,
 
-            SUM(
-                CASE
-                    WHEN status = 'CANCELLED'
-                    THEN 1
-                    ELSE 0
-                END
-            ) AS cancelled_transactions,
+        SUM(
+            CASE
+                WHEN status = 'CANCELLED'
+                THEN 1
+                ELSE 0
+            END
+        ) AS cancelled_transactions,
 
-            SUM(
-                CASE
-                    WHEN status = 'REFUNDED'
-                    THEN 1
-                    ELSE 0
-                END
-            ) AS refunded_transactions,
+        SUM(
+            CASE
+                WHEN status = 'REFUNDED'
+                THEN 1
+                ELSE 0
+            END
+        ) AS refunded_transactions,
 
-            SUM(
-                CASE
-                    WHEN status = 'PARTIALLY_REFUNDED'
-                    THEN 1
-                    ELSE 0
-                END
-            ) AS partially_refunded_transactions,
+        SUM(
+            CASE
+                WHEN status = 'PARTIALLY_REFUNDED'
+                THEN 1
+                ELSE 0
+            END
+        ) AS partially_refunded_transactions,
 
-            SUM(
-                CASE
-                    WHEN status = 'CHARGEBACK'
-                    THEN 1
-                    ELSE 0
-                END
-            ) AS chargeback_transactions
+        SUM(
+            CASE
+                WHEN status = 'CHARGEBACK'
+                THEN 1
+                ELSE 0
+            END
+        ) AS chargeback_transactions
 
-        FROM transactions
+    FROM transactions
 
-       WHERE (
-    ? IS NULL
-    OR merchant_id = ?
-)
-
-    `,
-
+`,
 
     // ==========================================================
     // REFUND COUNT
