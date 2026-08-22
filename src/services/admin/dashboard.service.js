@@ -10,6 +10,8 @@ const db = require(
 // ==========================================================
 // Helper: Number Normalizer
 // ==========================================================
+\
+
 
 const toNumber = (value) => {
 
@@ -180,20 +182,19 @@ const buildDateRange = ({
 
 
         const nextDate =
-            getNextDate(
-                formattedDate
-            );
+    getNextDate(
+        formattedEndDate
+    );
 
+return {
 
-        return {
+    startDate:
+        `${formattedStartDate} 00:00:00`,
 
-            startDate:
-                `${formattedDate} 00:00:00`,
+    endDate:
+        `${nextDate} 00:00:00`
 
-            endDate:
-                `${nextDate} 00:00:00`
-
-        };
+};
 
     }
 
@@ -693,16 +694,22 @@ const getAdminDashboard = async ({
         // Date range is applied.
         // ==================================================
 
-        const [topMerchantRows] = await connection.query(
-            DASHBOARD_QUERIES.GET_TOP_MERCHANTS,
-            [
-                paymentType,
-                selectedRange.startDate,
-                selectedRange.endDate,
-                merchantId,
-                merchantId,
-            ]
-        );
+        const safeLimit =
+    Number(limit) > 0
+        ? Math.min(Number(limit), 100)
+        : 10;
+
+const [topMerchantRows] = await connection.query(
+    DASHBOARD_QUERIES.GET_TOP_MERCHANTS,
+    [
+        paymentType,
+        selectedRange.startDate,
+        selectedRange.endDate,
+        merchantId,
+        merchantId,
+        safeLimit
+    ]
+);
 
 
         // ==================================================
