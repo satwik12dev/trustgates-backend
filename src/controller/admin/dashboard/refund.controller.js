@@ -151,34 +151,57 @@ const refundDashboard = async (req, res) => {
 // GET /refunds/summary
 // ==========================================================
 
-const refundSummary = async (req, res) => {
+const refundSummary = async (req, res, next) => {
 
     try {
 
         const {
-            merchantId = null,
-            startDate = null,
-            endDate = null
+            merchantId,
+            startDate,
+            endDate
         } = req.query;
 
 
+        let parsedMerchantId = null;
+
+
         if (
-            (startDate && !endDate) ||
-            (!startDate && endDate)
+            merchantId !== undefined &&
+            merchantId !== null &&
+            merchantId !== ""
         ) {
+
+            parsedMerchantId =
+                Number(merchantId);
+
+
+            if (
+                !Number.isInteger(parsedMerchantId) ||
+                parsedMerchantId <= 0
+            ) {
+
+                return res.status(400).json({
+
+                    success: false,
+
+                    message:
+                        "Merchant ID must be a valid positive integer."
+
+                });
+
+            }
+
+        }
+
+
+        if (!startDate || !endDate) {
 
             return res.status(400).json({
 
                 success: false,
 
-                error: {
-
-                    code: "VALIDATION_ERROR",
-
-                    message:
-                        "startDate and endDate must be provided together."
-
-                }
+                message:
+                    "startDate and endDate are required."
 
             });
 
@@ -189,16 +212,11 @@ const refundSummary = async (req, res) => {
             await getRefundSummary({
 
                 merchantId:
-                    merchantId
-                        ? Number(merchantId)
-                        : null,
+                    parsedMerchantId,
 
-                // null means all-time
-                startDate:
-                    startDate || "1970-01-01 00:00:00",
+                startDate,
 
-                endDate:
-                    endDate || "2999-12-31 23:59:59"
+                endDate
 
             });
 
@@ -213,17 +231,13 @@ const refundSummary = async (req, res) => {
             data: {
 
                 merchantId:
-                    merchantId
-                        ? Number(merchantId)
-                        : null,
+                    parsedMerchantId,
 
                 filters: {
 
-                    startDate:
-                        startDate || null,
+                    startDate,
 
-                    endDate:
-                        endDate || null
+                    endDate
 
                 },
 
@@ -236,27 +250,7 @@ const refundSummary = async (req, res) => {
 
     } catch (error) {
 
-        console.error(
-            "Refund Summary Error:",
-            error
-        );
-
-
-        return res.status(500).json({
-
-            success: false,
-
-            error: {
-
-                code:
-                    "INTERNAL_SERVER_ERROR",
-
-                message:
-                    error.message
-
-            }
-
-        });
+        next(error);
 
     }
 

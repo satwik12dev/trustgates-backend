@@ -268,51 +268,44 @@ const summaryCards = async (
     try {
 
         const {
-            type,
-            merchantId,
-            date,
-            startDate,
-            endDate
+            merchantId
         } = req.query;
 
 
         // ==================================================
-        // Basic Validation
+        // Merchant ID
         // ==================================================
+
+        let parsedMerchantId = null;
+
 
         if (
-            !type ||
-            !["PAYIN", "PAYOUT"].includes(
-                type.toUpperCase()
-            )
+            merchantId !== undefined &&
+            merchantId !== null &&
+            merchantId !== ""
         ) {
 
-            return res.status(400).json({
+            parsedMerchantId =
+                Number(merchantId);
 
-                success: false,
 
-                message:
-                    "type must be either PAYIN or PAYOUT."
+            if (
+                !Number.isInteger(parsedMerchantId) ||
+                parsedMerchantId <= 0
+            ) {
 
-            });
+                return res.status(400).json({
+
+                    success: false,
+
+                    message:
+                        "Merchant ID must be a valid positive integer."
+
+                });
+
+            }
 
         }
-
-
-        // ==================================================
-        // Build Date Range
-        // ==================================================
-
-        const range =
-            buildDateRange({
-
-                date,
-
-                startDate,
-
-                endDate
-
-            });
 
 
         // ==================================================
@@ -322,19 +315,8 @@ const summaryCards = async (
         const summary =
             await getDashboardSummary({
 
-                type:
-                    type.toUpperCase(),
-
                 merchantId:
-                    merchantId
-                        ? Number(merchantId)
-                        : null,
-
-                startDate:
-                    range.startDate,
-
-                endDate:
-                    range.endDate
+                    parsedMerchantId
 
             });
 
@@ -351,24 +333,6 @@ const summaryCards = async (
                 "Dashboard summary fetched successfully.",
 
             data: {
-
-                type:
-                    type.toUpperCase(),
-
-                merchantId:
-                    merchantId
-                        ? Number(merchantId)
-                        : null,
-
-                filters: {
-
-                    startDate:
-                        range.startDate,
-
-                    endDate:
-                        range.endDate
-
-                },
 
                 summary
 
@@ -388,7 +352,6 @@ const summaryCards = async (
 // ==========================================================
 // GET RECENT TRANSACTIONS
 // ==========================================================
-
 const recentTransactions = async (
     req,
     res,
@@ -398,46 +361,15 @@ const recentTransactions = async (
     try {
 
         const {
-            type,
-            merchantId,
-            date,
-            startDate,
-            endDate
+            merchantId
         } = req.query;
-
-
-        // ==================================================
-        // Validate Payment Type
-        // ==================================================
-
-        if (
-            !type ||
-            ![
-                "PAYIN",
-                "PAYOUT"
-            ].includes(
-                type.toUpperCase()
-            )
-        ) {
-
-            return res.status(400).json({
-
-                success: false,
-
-                message:
-                    "type must be either PAYIN or PAYOUT."
-
-            });
-
-        }
 
 
         // ==================================================
         // Merchant ID
         // ==================================================
 
-        let parsedMerchantId =
-            null;
+        let parsedMerchantId = null;
 
 
         if (
@@ -447,15 +379,11 @@ const recentTransactions = async (
         ) {
 
             parsedMerchantId =
-                Number(
-                    merchantId
-                );
+                Number(merchantId);
 
 
             if (
-                !Number.isInteger(
-                    parsedMerchantId
-                ) ||
+                !Number.isInteger(parsedMerchantId) ||
                 parsedMerchantId <= 0
             ) {
 
@@ -474,39 +402,14 @@ const recentTransactions = async (
 
 
         // ==================================================
-        // Build Date Range
-        // ==================================================
-
-        const range =
-            buildDateRange({
-
-                date,
-
-                startDate,
-
-                endDate
-
-            });
-
-
-        // ==================================================
         // Get Recent Transactions
         // ==================================================
 
         const transactions =
             await getRecentTransactions({
 
-                type:
-                    type.toUpperCase(),
-
                 merchantId:
-                    parsedMerchantId,
-
-                startDate:
-                    range.startDate,
-
-                endDate:
-                    range.endDate
+                    parsedMerchantId
 
             });
 
@@ -523,22 +426,6 @@ const recentTransactions = async (
                 "Recent transactions fetched successfully.",
 
             data: {
-
-                type:
-                    type.toUpperCase(),
-
-                merchantId:
-                    parsedMerchantId,
-
-                filters: {
-
-                    startDate:
-                        range.startDate,
-
-                    endDate:
-                        range.endDate
-
-                },
 
                 count:
                     transactions.length,
@@ -557,7 +444,6 @@ const recentTransactions = async (
 
 };
 
-
 // ==========================================================
 // GET TRANSACTION VOLUME
 // ==========================================================
@@ -571,38 +457,8 @@ const transactionVolume = async (
     try {
 
         const {
-            type,
-            merchantId,
-            date,
-            startDate,
-            endDate
+            merchantId
         } = req.query;
-
-
-        // ==================================================
-        // Validate Type
-        // ==================================================
-
-        if (
-            !type ||
-            ![
-                "PAYIN",
-                "PAYOUT"
-            ].includes(
-                type.toUpperCase()
-            )
-        ) {
-
-            return res.status(400).json({
-
-                success: false,
-
-                message:
-                    "type must be either PAYIN or PAYOUT."
-
-            });
-
-        }
 
 
         // ==================================================
@@ -646,39 +502,14 @@ const transactionVolume = async (
 
 
         // ==================================================
-        // Build Date Range
-        // ==================================================
-
-        const range =
-            buildDateRange({
-
-                date,
-
-                startDate,
-
-                endDate
-
-            });
-
-
-        // ==================================================
         // Get Transaction Volume
         // ==================================================
 
         const volume =
             await getTransactionVolume({
 
-                type:
-                    type.toUpperCase(),
-
                 merchantId:
-                    parsedMerchantId,
-
-                startDate:
-                    range.startDate,
-
-                endDate:
-                    range.endDate
+                    parsedMerchantId
 
             });
 
@@ -695,22 +526,6 @@ const transactionVolume = async (
                 "Transaction volume fetched successfully.",
 
             data: {
-
-                type:
-                    type.toUpperCase(),
-
-                merchantId:
-                    parsedMerchantId,
-
-                filters: {
-
-                    startDate:
-                        range.startDate,
-
-                    endDate:
-                        range.endDate
-
-                },
 
                 count:
                     volume.length,
@@ -729,11 +544,9 @@ const transactionVolume = async (
 
 };
 
-
 // ==========================================================
 // GET SUCCESS RATE
 // ==========================================================
-
 const successRate = async (
     req,
     res,
@@ -743,46 +556,15 @@ const successRate = async (
     try {
 
         const {
-            type,
-            merchantId,
-            date,
-            startDate,
-            endDate
+            merchantId
         } = req.query;
-
-
-        // ==================================================
-        // Validate Type
-        // ==================================================
-
-        if (
-            !type ||
-            ![
-                "PAYIN",
-                "PAYOUT"
-            ].includes(
-                type.toUpperCase()
-            )
-        ) {
-
-            return res.status(400).json({
-
-                success: false,
-
-                message:
-                    "type must be either PAYIN or PAYOUT."
-
-            });
-
-        }
 
 
         // ==================================================
         // Merchant ID
         // ==================================================
 
-        let parsedMerchantId =
-            null;
+        let parsedMerchantId = null;
 
 
         if (
@@ -798,9 +580,7 @@ const successRate = async (
 
 
             if (
-                !Number.isInteger(
-                    parsedMerchantId
-                ) ||
+                !Number.isInteger(parsedMerchantId) ||
                 parsedMerchantId <= 0
             ) {
 
@@ -819,39 +599,14 @@ const successRate = async (
 
 
         // ==================================================
-        // Date Range
-        // ==================================================
-
-        const range =
-            buildDateRange({
-
-                date,
-
-                startDate,
-
-                endDate
-
-            });
-
-
-        // ==================================================
         // Get Success Rate
         // ==================================================
 
         const result =
             await getSuccessRate({
 
-                type:
-                    type.toUpperCase(),
-
                 merchantId:
-                    parsedMerchantId,
-
-                startDate:
-                    range.startDate,
-
-                endDate:
-                    range.endDate
+                    parsedMerchantId
 
             });
 
@@ -868,22 +623,6 @@ const successRate = async (
                 "Transaction success rate fetched successfully.",
 
             data: {
-
-                type:
-                    type.toUpperCase(),
-
-                merchantId:
-                    parsedMerchantId,
-
-                filters: {
-
-                    startDate:
-                        range.startDate,
-
-                    endDate:
-                        range.endDate
-
-                },
 
                 ...result
 
@@ -913,38 +652,8 @@ const paymentMethodAnalytics = async (
     try {
 
         const {
-            type,
-            merchantId,
-            date,
-            startDate,
-            endDate
+            merchantId
         } = req.query;
-
-
-        // ==================================================
-        // Validate Type
-        // ==================================================
-
-        if (
-            !type ||
-            ![
-                "PAYIN",
-                "PAYOUT"
-            ].includes(
-                type.toUpperCase()
-            )
-        ) {
-
-            return res.status(400).json({
-
-                success: false,
-
-                message:
-                    "type must be either PAYIN or PAYOUT."
-
-            });
-
-        }
 
 
         // ==================================================
@@ -967,9 +676,7 @@ const paymentMethodAnalytics = async (
 
 
             if (
-                !Number.isInteger(
-                    parsedMerchantId
-                ) ||
+                !Number.isInteger(parsedMerchantId) ||
                 parsedMerchantId <= 0
             ) {
 
@@ -988,39 +695,14 @@ const paymentMethodAnalytics = async (
 
 
         // ==================================================
-        // Date Range
-        // ==================================================
-
-        const range =
-            buildDateRange({
-
-                date,
-
-                startDate,
-
-                endDate
-
-            });
-
-
-        // ==================================================
         // Get Analytics
         // ==================================================
 
         const paymentMethods =
             await getPaymentMethodAnalytics({
 
-                type:
-                    type.toUpperCase(),
-
                 merchantId:
-                    parsedMerchantId,
-
-                startDate:
-                    range.startDate,
-
-                endDate:
-                    range.endDate
+                    parsedMerchantId
 
             });
 
@@ -1037,22 +719,6 @@ const paymentMethodAnalytics = async (
                 "Payment method analytics fetched successfully.",
 
             data: {
-
-                type:
-                    type.toUpperCase(),
-
-                merchantId:
-                    parsedMerchantId,
-
-                filters: {
-
-                    startDate:
-                        range.startDate,
-
-                    endDate:
-                        range.endDate
-
-                },
 
                 count:
                     paymentMethods.length,
@@ -1084,122 +750,9 @@ const transactionStatusAnalytics = async (
 
     try {
 
-        const {
-            type,
-            merchantId,
-            date,
-            startDate,
-            endDate
-        } = req.query;
-
-
-        // ==================================================
-        // Validate Type
-        // ==================================================
-
-        if (
-            !type ||
-            ![
-                "PAYIN",
-                "PAYOUT"
-            ].includes(
-                type.toUpperCase()
-            )
-        ) {
-
-            return res.status(400).json({
-
-                success: false,
-
-                message:
-                    "type must be either PAYIN or PAYOUT."
-
-            });
-
-        }
-
-
-        // ==================================================
-        // Merchant ID
-        // ==================================================
-
-        let parsedMerchantId = null;
-
-
-        if (
-            merchantId !== undefined &&
-            merchantId !== null &&
-            merchantId !== ""
-        ) {
-
-            parsedMerchantId =
-                Number(
-                    merchantId
-                );
-
-
-            if (
-                !Number.isInteger(
-                    parsedMerchantId
-                ) ||
-                parsedMerchantId <= 0
-            ) {
-
-                return res.status(400).json({
-
-                    success: false,
-
-                    message:
-                        "Merchant ID must be a valid positive integer."
-
-                });
-
-            }
-
-        }
-
-
-        // ==================================================
-        // Date Range
-        // ==================================================
-
-        const range =
-            buildDateRange({
-
-                date,
-
-                startDate,
-
-                endDate
-
-            });
-
-
-        // ==================================================
-        // Get Status Analytics
-        // ==================================================
-
         const statuses =
-            await getTransactionStatusAnalytics({
+            await getTransactionStatusAnalytics();
 
-                type:
-                    type.toUpperCase(),
-
-                merchantId:
-                    parsedMerchantId,
-
-                startDate:
-                    range.startDate,
-
-                endDate:
-                    range.endDate
-
-            });
-
-
-        // ==================================================
-        // Response
-        // ==================================================
 
         return res.status(200).json({
 
@@ -1209,22 +762,6 @@ const transactionStatusAnalytics = async (
                 "Transaction status analytics fetched successfully.",
 
             data: {
-
-                type:
-                    type.toUpperCase(),
-
-                merchantId:
-                    parsedMerchantId,
-
-                filters: {
-
-                    startDate:
-                        range.startDate,
-
-                    endDate:
-                        range.endDate
-
-                },
 
                 count:
                     statuses.length,
@@ -1243,11 +780,9 @@ const transactionStatusAnalytics = async (
 
 };
 
-
 // ==========================================================
 // GET TOP MERCHANTS
 // ==========================================================
-
 const topMerchants = async (
     req,
     res,
@@ -1257,95 +792,15 @@ const topMerchants = async (
     try {
 
         const {
-            paymentType,
-            merchantId,
-            date,
-            startDate,
-            endDate,
             limit
         } = req.query;
-
-
-        // ==================================================
-        // Payment Type
-        // ==================================================
-
-        const normalizedPaymentType =
-            String(
-                paymentType || "PAYIN"
-            )
-                .trim()
-                .toUpperCase();
-
-
-        if (
-            ![
-                "PAYIN",
-                "PAYOUT"
-            ].includes(
-                normalizedPaymentType
-            )
-        ) {
-
-            return res.status(400).json({
-
-                success: false,
-
-                message:
-                    "Payment type must be PAYIN or PAYOUT."
-
-            });
-
-        }
-
-
-        // ==================================================
-        // Merchant ID
-        // ==================================================
-
-        let parsedMerchantId =
-            null;
-
-
-        if (
-            merchantId !== undefined &&
-            merchantId !== null &&
-            merchantId !== ""
-        ) {
-
-            parsedMerchantId =
-                Number(
-                    merchantId
-                );
-
-
-            if (
-                !Number.isInteger(
-                    parsedMerchantId
-                ) ||
-                parsedMerchantId <= 0
-            ) {
-
-                return res.status(400).json({
-
-                    success: false,
-
-                    message:
-                        "Merchant ID must be a valid positive integer."
-
-                });
-
-            }
-
-        }
 
 
         // ==================================================
         // Limit
         // ==================================================
 
-        let parsedLimit =
-            10;
+        let parsedLimit = 10;
 
 
         if (
@@ -1354,15 +809,11 @@ const topMerchants = async (
         ) {
 
             parsedLimit =
-                Number(
-                    limit
-                );
+                Number(limit);
 
 
             if (
-                !Number.isInteger(
-                    parsedLimit
-                ) ||
+                !Number.isInteger(parsedLimit) ||
                 parsedLimit < 1 ||
                 parsedLimit > 100
             ) {
@@ -1382,39 +833,11 @@ const topMerchants = async (
 
 
         // ==================================================
-        // Date Range
-        // ==================================================
-
-        const range =
-            buildDateRange({
-
-                date,
-
-                startDate,
-
-                endDate
-
-            });
-
-
-        // ==================================================
         // Get Top Merchants
         // ==================================================
 
         const merchants =
             await getTopMerchants({
-
-                paymentType:
-                    normalizedPaymentType,
-
-                merchantId:
-                    parsedMerchantId,
-
-                startDate:
-                    range.startDate,
-
-                endDate:
-                    range.endDate,
 
                 limit:
                     parsedLimit
@@ -1435,22 +858,6 @@ const topMerchants = async (
 
             data: {
 
-                paymentType:
-                    normalizedPaymentType,
-
-                merchantId:
-                    parsedMerchantId,
-
-                filters: {
-
-                    startDate:
-                        range.startDate,
-
-                    endDate:
-                        range.endDate
-
-                },
-
                 count:
                     merchants.length,
 
@@ -1467,7 +874,6 @@ const topMerchants = async (
     }
 
 };
-
 
 // ==========================================================
 // GET /transactions

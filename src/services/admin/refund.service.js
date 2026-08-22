@@ -231,7 +231,9 @@ const getRefundSummary = async ({
     try {
 
         const normalizedMerchantId =
-            merchantId
+            merchantId !== null &&
+            merchantId !== undefined &&
+            merchantId !== ""
                 ? Number(merchantId)
                 : null;
 
@@ -240,17 +242,13 @@ const getRefundSummary = async ({
             rows
         ] = await connection.query(
 
-            REFUND_QUERIES
-                .GET_REFUND_SUMMARY,
+            REFUND_QUERIES.GET_REFUND_SUMMARY,
 
             [
-
                 normalizedMerchantId,
                 normalizedMerchantId,
-
                 startDate,
                 endDate
-
             ]
 
         );
@@ -306,7 +304,6 @@ const getRefundSummary = async ({
     }
 
 };
-
 
 // ==========================================================
 // RECENT REFUNDS

@@ -22,12 +22,7 @@ const toNumber = (value) => {
 // GET ANALYTICS OVERVIEW
 // ==========================================================
 
-const getAnalyticsOverview = async ({
-    type,
-    merchantId = null,
-    startDate,
-    endDate
-}) => {
+const getAnalyticsOverview = async () => {
 
     const connection =
         await db.getConnection();
@@ -39,41 +34,41 @@ const getAnalyticsOverview = async ({
         ] = await connection.query(
 
             ANALYTICS_QUERIES
-                .GET_ANALYTICS_OVERVIEW,
-
-            [
-                type,
-                startDate,
-                endDate,
-                merchantId,
-                merchantId
-            ]
+                .GET_ANALYTICS_OVERVIEW
 
         );
 
+
         const row =
             rows[0] || {};
+
 
         const totalTransactions =
             toNumber(
                 row.total_transactions
             );
 
+
         const successfulTransactions =
             toNumber(
                 row.successful_transactions
             );
 
+
         const successRate =
             totalTransactions > 0
+
                 ? Number(
                     (
-                        successfulTransactions /
-                        totalTransactions *
-                        100
+                        (
+                            successfulTransactions /
+                            totalTransactions
+                        ) * 100
                     ).toFixed(2)
                 )
+
                 : 0;
+
 
         return {
 
@@ -135,12 +130,7 @@ const getAnalyticsOverview = async ({
 // TRANSACTION TREND
 // ==========================================================
 
-const getTransactionTrend = async ({
-    type,
-    merchantId = null,
-    startDate,
-    endDate
-}) => {
+const getTransactionTrend = async () => {
 
     const connection =
         await db.getConnection();
@@ -152,17 +142,10 @@ const getTransactionTrend = async ({
         ] = await connection.query(
 
             ANALYTICS_QUERIES
-                .GET_TRANSACTION_TREND,
-
-            [
-                type,
-                startDate,
-                endDate,
-                merchantId,
-                merchantId
-            ]
+                .GET_TRANSACTION_TREND
 
         );
+
 
         return rows.map(
             (row) => ({
@@ -206,12 +189,7 @@ const getTransactionTrend = async ({
 // REVENUE TREND
 // ==========================================================
 
-const getRevenueTrend = async ({
-    type,
-    merchantId = null,
-    startDate,
-    endDate
-}) => {
+const getRevenueTrend = async () => {
 
     const connection =
         await db.getConnection();
@@ -223,17 +201,10 @@ const getRevenueTrend = async ({
         ] = await connection.query(
 
             ANALYTICS_QUERIES
-                .GET_REVENUE_TREND,
-
-            [
-                type,
-                startDate,
-                endDate,
-                merchantId,
-                merchantId
-            ]
+                .GET_REVENUE_TREND
 
         );
+
 
         return rows.map(
             (row) => ({
@@ -267,12 +238,7 @@ const getRevenueTrend = async ({
 // PAYMENT METHOD DISTRIBUTION
 // ==========================================================
 
-const getPaymentMethodDistribution = async ({
-    type,
-    merchantId = null,
-    startDate,
-    endDate
-}) => {
+const getPaymentMethodDistribution = async () => {
 
     const connection =
         await db.getConnection();
@@ -284,17 +250,10 @@ const getPaymentMethodDistribution = async ({
         ] = await connection.query(
 
             ANALYTICS_QUERIES
-                .GET_PAYMENT_METHOD_DISTRIBUTION,
-
-            [
-                type,
-                startDate,
-                endDate,
-                merchantId,
-                merchantId
-            ]
+                .GET_PAYMENT_METHOD_DISTRIBUTION
 
         );
+
 
         return rows.map(
             (row) => ({
@@ -333,12 +292,7 @@ const getPaymentMethodDistribution = async ({
 // PAYMENT PROVIDER DISTRIBUTION
 // ==========================================================
 
-const getPaymentProviderDistribution = async ({
-    type,
-    merchantId = null,
-    startDate,
-    endDate
-}) => {
+const getPaymentProviderDistribution = async () => {
 
     const connection =
         await db.getConnection();
@@ -350,17 +304,10 @@ const getPaymentProviderDistribution = async ({
         ] = await connection.query(
 
             ANALYTICS_QUERIES
-                .GET_PAYMENT_PROVIDER_DISTRIBUTION,
-
-            [
-                type,
-                startDate,
-                endDate,
-                merchantId,
-                merchantId
-            ]
+                .GET_PAYMENT_PROVIDER_DISTRIBUTION
 
         );
+
 
         return rows.map(
             (row) => ({
@@ -404,48 +351,55 @@ const getPaymentProviderDistribution = async ({
 // MERCHANT PERFORMANCE
 // ==========================================================
 
-// ==========================================================
-// MERCHANT PERFORMANCE
-// ==========================================================
-
 const getMerchantPerformance = async ({
-    type,
-    merchantId = null,
-    startDate,
-    endDate,
     limit = 10
-}) => {
+} = {}) => {
 
     const connection =
         await db.getConnection();
 
     try {
 
+        const safeLimit =
+            Number(limit) > 0
+                ? Math.min(
+                    Number(limit),
+                    100
+                )
+                : 10;
+
+
+        /*
+         * IMPORTANT:
+         *
+         * LIMIT cannot safely be written as:
+         *
+         * LIMIT ?
+         *
+         * depending on the query/client setup.
+         *
+         * Therefore the validated numeric value
+         * is inserted into the query string.
+         */
+
+        const query =
+            ANALYTICS_QUERIES
+                .GET_MERCHANT_PERFORMANCE
+                .replace(
+                    /LIMIT\s+\d+/i,
+                    `LIMIT ${safeLimit}`
+                );
+
+
         const [
             rows
         ] = await connection.query(
-
-            ANALYTICS_QUERIES
-                .GET_MERCHANT_PERFORMANCE,
-
-            [
-                type,
-                startDate,
-                endDate,
-                merchantId,
-                merchantId,
-                limit
-            ]
-
+            query
         );
 
 
         return rows.map(
             (row) => ({
-
-                // ==========================================
-                // Merchant
-                // ==========================================
 
                 merchantId:
                     row.merchant_id,
@@ -453,110 +407,55 @@ const getMerchantPerformance = async ({
                 businessName:
                     row.business_name,
 
-
-                // ==========================================
-                // Total
-                // ==========================================
-
                 totalTransactions:
                     toNumber(
                         row.total_transactions
                     ),
-
-
-                // ==========================================
-                // Success
-                // ==========================================
 
                 successfulTransactions:
                     toNumber(
                         row.successful_transactions
                     ),
 
-
-                // ==========================================
-                // Created
-                // ==========================================
-
                 createdTransactions:
                     toNumber(
                         row.created_transactions
                     ),
-
-
-                // ==========================================
-                // Pending
-                // ==========================================
 
                 pendingTransactions:
                     toNumber(
                         row.pending_transactions
                     ),
 
-
-                // ==========================================
-                // Authorized
-                // ==========================================
-
                 authorizedTransactions:
                     toNumber(
                         row.authorized_transactions
                     ),
-
-
-                // ==========================================
-                // Failed
-                // ==========================================
 
                 failedTransactions:
                     toNumber(
                         row.failed_transactions
                     ),
 
-
-                // ==========================================
-                // Cancelled
-                // ==========================================
-
                 cancelledTransactions:
                     toNumber(
                         row.cancelled_transactions
                     ),
-
-
-                // ==========================================
-                // Refunded
-                // ==========================================
 
                 refundedTransactions:
                     toNumber(
                         row.refunded_transactions
                     ),
 
-
-                // ==========================================
-                // Partially Refunded
-                // ==========================================
-
                 partiallyRefundedTransactions:
                     toNumber(
                         row.partially_refunded_transactions
                     ),
 
-
-                // ==========================================
-                // Chargeback
-                // ==========================================
-
                 chargebackTransactions:
                     toNumber(
                         row.chargeback_transactions
                     ),
-
-
-                // ==========================================
-                // Revenue
-                // ==========================================
 
                 revenue:
                     toNumber(
@@ -580,10 +479,7 @@ const getMerchantPerformance = async ({
 // ==========================================================
 
 const getHourlyTransactions = async ({
-    type,
-    merchantId = null,
-    startDate,
-    endDate
+    date
 }) => {
 
     const connection =
@@ -599,11 +495,8 @@ const getHourlyTransactions = async ({
                 .GET_HOURLY_TRANSACTIONS,
 
             [
-                type,
-                startDate,
-                endDate,
-                merchantId,
-                merchantId
+                date,
+                date
             ]
 
         );
@@ -617,23 +510,23 @@ const getHourlyTransactions = async ({
                     ),
 
                 totalTransactions:
-                    toNumber(
-                        row.total_transactions
+                    Number(
+                        row.total_transactions || 0
                     ),
 
                 successfulTransactions:
-                    toNumber(
-                        row.successful_transactions
+                    Number(
+                        row.successful_transactions || 0
                     ),
 
                 failedTransactions:
-                    toNumber(
-                        row.failed_transactions
+                    Number(
+                        row.failed_transactions || 0
                     ),
 
                 pendingTransactions:
-                    toNumber(
-                        row.pending_transactions
+                    Number(
+                        row.pending_transactions || 0
                     )
 
             })
@@ -647,17 +540,11 @@ const getHourlyTransactions = async ({
 
 };
 
-
 // ==========================================================
 // CURRENCY ANALYTICS
 // ==========================================================
 
-const getCurrencyAnalytics = async ({
-    type,
-    merchantId = null,
-    startDate,
-    endDate
-}) => {
+const getCurrencyAnalytics = async () => {
 
     const connection =
         await db.getConnection();
@@ -669,17 +556,10 @@ const getCurrencyAnalytics = async ({
         ] = await connection.query(
 
             ANALYTICS_QUERIES
-                .GET_CURRENCY_ANALYTICS,
-
-            [
-                type,
-                startDate,
-                endDate,
-                merchantId,
-                merchantId
-            ]
+                .GET_CURRENCY_ANALYTICS
 
         );
+
 
         return rows.map(
             (row) => ({
@@ -718,12 +598,7 @@ const getCurrencyAnalytics = async ({
 // STATUS ANALYTICS
 // ==========================================================
 
-const getStatusAnalytics = async ({
-    type,
-    merchantId = null,
-    startDate,
-    endDate
-}) => {
+const getStatusAnalytics = async () => {
 
     const connection =
         await db.getConnection();
@@ -735,17 +610,10 @@ const getStatusAnalytics = async ({
         ] = await connection.query(
 
             ANALYTICS_QUERIES
-                .GET_STATUS_ANALYTICS,
-
-            [
-                type,
-                startDate,
-                endDate,
-                merchantId,
-                merchantId
-            ]
+                .GET_STATUS_ANALYTICS
 
         );
+
 
         return rows.map(
             (row) => ({
@@ -778,17 +646,10 @@ const getStatusAnalytics = async ({
 // ==========================================================
 // COMPLETE ANALYTICS
 // ==========================================================
-// One API response containing all analytics.
-//
-// ==========================================================
 
 const getDashboardAnalytics = async ({
-    type,
-    merchantId = null,
-    startDate,
-    endDate,
     limit = 10
-}) => {
+} = {}) => {
 
     const [
 
@@ -812,87 +673,25 @@ const getDashboardAnalytics = async ({
 
     ] = await Promise.all([
 
-        getAnalyticsOverview({
+        getAnalyticsOverview(),
 
-            type,
-            merchantId,
-            startDate,
-            endDate
+        getTransactionTrend(),
 
-        }),
+        getRevenueTrend(),
 
-        getTransactionTrend({
+        getPaymentMethodDistribution(),
 
-            type,
-            merchantId,
-            startDate,
-            endDate
-
-        }),
-
-        getRevenueTrend({
-
-            type,
-            merchantId,
-            startDate,
-            endDate
-
-        }),
-
-        getPaymentMethodDistribution({
-
-            type,
-            merchantId,
-            startDate,
-            endDate
-
-        }),
-
-        getPaymentProviderDistribution({
-
-            type,
-            merchantId,
-            startDate,
-            endDate
-
-        }),
+        getPaymentProviderDistribution(),
 
         getMerchantPerformance({
-
-            type,
-            merchantId,
-            startDate,
-            endDate,
             limit
-
         }),
 
-        getHourlyTransactions({
+        getHourlyTransactions(),
 
-            type,
-            merchantId,
-            startDate,
-            endDate
+        getCurrencyAnalytics(),
 
-        }),
-
-        getCurrencyAnalytics({
-
-            type,
-            merchantId,
-            startDate,
-            endDate
-
-        }),
-
-        getStatusAnalytics({
-
-            type,
-            merchantId,
-            startDate,
-            endDate
-
-        })
+        getStatusAnalytics()
 
     ]);
 

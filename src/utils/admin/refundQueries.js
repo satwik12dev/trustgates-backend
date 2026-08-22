@@ -84,66 +84,80 @@ const REFUND_QUERIES = Object.freeze({
 
     GET_REFUND_SUMMARY: `
 
-        SELECT
+    SELECT
 
-            COUNT(*) AS total_refunds,
+        COUNT(*) AS total_refunds,
 
-            SUM(
-                CASE
-                    WHEN refund_status = 'PROCESSED'
-                    THEN 1
-                    ELSE 0
-                END
-            ) AS processed_refunds,
+        SUM(
+            CASE
+                WHEN refund_status = 'PROCESSED'
+                THEN 1
+                ELSE 0
+            END
+        ) AS processed_refunds,
 
-            SUM(
-                CASE
-                    WHEN refund_status = 'FAILED'
-                    THEN 1
-                    ELSE 0
-                END
-            ) AS failed_refunds,
+        SUM(
+            CASE
+                WHEN refund_status = 'FAILED'
+                THEN 1
+                ELSE 0
+            END
+        ) AS failed_refunds,
 
+        SUM(
+            CASE
+                WHEN refund_status IN (
+                    'CREATED',
+                    'PROCESSING',
+                    'PENDING'
+                )
+                THEN 1
+                ELSE 0
+            END
+        ) AS pending_refunds,
+
+        COALESCE(
+            SUM(amount),
+            0
+        ) AS refund_amount,
+
+        COALESCE(
+            SUM(fee_amount),
+            0
+        ) AS refund_fees,
+
+        COALESCE(
             SUM(
                 CASE
                     WHEN refund_status IN (
-                        'CREATED',
-                        'PROCESSING'
+                        'PROCESSED',
+                        'PROCESSING',
+                        'PENDING'
                     )
-                    THEN 1
+                    THEN
+                        COALESCE(amount, 0)
+                        +
+                        COALESCE(fee_amount, 0)
                     ELSE 0
                 END
-            ) AS pending_refunds,
+            ),
+            0
+        ) AS total_debit_amount
 
-            COALESCE(
-                SUM(amount),
-                0
-            ) AS refund_amount,
+    FROM transaction_refunds
 
-            COALESCE(
-                SUM(fee_amount),
-                0
-            ) AS refund_fees,
+    WHERE
 
-            COALESCE(
-                SUM(total_debit_amount),
-                0
-            ) AS total_debit_amount
+        (
+            ? IS NULL
+            OR merchant_id = ?
+        )
 
-        FROM transaction_refunds
+        AND created_at >= ?
 
-        WHERE
+        AND created_at < ?
 
-            (
-                ? IS NULL
-                OR merchant_id = ?
-            )
-
-            AND created_at >= ?
-
-            AND created_at < ?
-
-    `,
+`,
 
 
     // ==========================================================

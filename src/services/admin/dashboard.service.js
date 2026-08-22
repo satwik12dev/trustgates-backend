@@ -572,18 +572,6 @@ const getAdminDashboard = async ({
             DASHBOARD_QUERIES
                 .GET_REFUND_COUNT,
 
-            [
-
-                selectedRange.startDate,
-
-                selectedRange.endDate,
-
-                merchantId,
-
-                merchantId
-
-            ]
-
         );
 
 
@@ -607,15 +595,9 @@ const getAdminDashboard = async ({
 
             [
 
-                paymentType,
-
                 todayRange.startDate,
 
-                todayRange.endDate,
-
-                merchantId,
-
-                merchantId
+                todayRange.endDate
 
             ]
 
@@ -638,15 +620,9 @@ const getAdminDashboard = async ({
 
             [
 
-                paymentType,
-
                 monthlyRange.startDate,
 
-                monthlyRange.endDate,
-
-                merchantId,
-
-                merchantId
+                monthlyRange.endDate
 
             ]
 
@@ -723,22 +699,6 @@ const getAdminDashboard = async ({
             DASHBOARD_QUERIES
                 .GET_TOP_MERCHANTS,
 
-            [
-
-                paymentType,
-
-                selectedRange.startDate,
-
-                selectedRange.endDate,
-
-                merchantId,
-
-                merchantId,
-
-                safeLimit
-
-            ]
-
         );
 
 
@@ -753,21 +713,7 @@ const getAdminDashboard = async ({
         ] = await connection.query(
 
             DASHBOARD_QUERIES
-                .GET_TRANSACTION_VOLUME,
-
-            [
-
-                paymentType,
-
-                selectedRange.startDate,
-
-                selectedRange.endDate,
-
-                merchantId,
-
-                merchantId
-
-            ]
+                .GET_TRANSACTION_VOLUME
 
         );
 
@@ -783,21 +729,7 @@ const getAdminDashboard = async ({
         ] = await connection.query(
 
             DASHBOARD_QUERIES
-                .GET_SUCCESS_RATE,
-
-            [
-
-                paymentType,
-
-                selectedRange.startDate,
-
-                selectedRange.endDate,
-
-                merchantId,
-
-                merchantId
-
-            ]
+                .GET_SUCCESS_RATE
 
         );
 
@@ -844,26 +776,9 @@ const getAdminDashboard = async ({
         // ==================================================
 
         return {
-
-            paymentType,
-
-            merchantId,
-
-            filters: {
-
-                startDate:
-                    selectedRange.startDate,
-
-                endDate:
-                    selectedRange.endDate
-
-            },
-
-
             // ==================================================
             // SUMMARY
             // ==================================================
-
             summary: {
 
                 ...normalizeSummary(
@@ -983,19 +898,7 @@ const getDashboardSummary = async ({
         ] = await connection.query(
 
             DASHBOARD_QUERIES
-                .GET_REFUND_COUNT,
-
-            [
-
-                startDate,
-
-                endDate,
-
-                merchantId,
-
-                merchantId
-
-            ]
+                .GET_REFUND_COUNT
 
         );
 
@@ -1032,17 +935,8 @@ const getDashboardSummary = async ({
                 .GET_TODAYS_REVENUE,
 
             [
-
-                type,
-
                 todayStart,
-
-                tomorrowStart,
-
-                merchantId,
-
-                merchantId
-
+                tomorrowStart
             ]
 
         );
@@ -1076,17 +970,8 @@ const getDashboardSummary = async ({
                 .GET_MONTHLY_REVENUE,
 
             [
-
-                type,
-
                 monthStart,
-
-                nextMonthStart,
-
-                merchantId,
-
-                merchantId
-
+                nextMonthStart
             ]
 
         );
@@ -1104,11 +989,8 @@ const getDashboardSummary = async ({
                 .GET_AVAILABLE_BALANCE,
 
             [
-
                 merchantId,
-
                 merchantId
-
             ]
 
         );
@@ -1126,11 +1008,8 @@ const getDashboardSummary = async ({
                 .GET_SETTLED_AMOUNT,
 
             [
-
                 merchantId,
-
                 merchantId
-
             ]
 
         );
@@ -1255,16 +1134,8 @@ const getDashboardSummary = async ({
 
 };
 
-
-// ==========================================================
-// GET RECENT TRANSACTIONS
-// ==========================================================
-
 const getRecentTransactions = async ({
-    type,
-    merchantId = null,
-    startDate,
-    endDate
+    merchantId = null
 }) => {
 
     const connection =
@@ -1280,21 +1151,11 @@ const getRecentTransactions = async ({
                 .GET_RECENT_TRANSACTIONS,
 
             [
-
-                type,
-
-                startDate,
-
-                endDate,
-
                 merchantId,
-
                 merchantId
-
             ]
 
         );
-
 
         return rows.map(
             (transaction) => ({
@@ -1358,12 +1219,8 @@ const getRecentTransactions = async ({
 // ==========================================================
 // GET TRANSACTION VOLUME
 // ==========================================================
-
 const getTransactionVolume = async ({
-    type,
-    merchantId = null,
-    startDate,
-    endDate
+    merchantId = null
 }) => {
 
     const connection =
@@ -1379,17 +1236,8 @@ const getTransactionVolume = async ({
                 .GET_TRANSACTION_VOLUME,
 
             [
-
-                type,
-
-                startDate,
-
-                endDate,
-
                 merchantId,
-
                 merchantId
-
             ]
 
         );
@@ -1477,10 +1325,7 @@ const getTransactionVolume = async ({
 // ==========================================================
 
 const getSuccessRate = async ({
-    type,
-    merchantId = null,
-    startDate,
-    endDate
+    merchantId = null
 }) => {
 
     const connection =
@@ -1493,21 +1338,7 @@ const getSuccessRate = async ({
         ] = await connection.query(
 
             DASHBOARD_QUERIES
-                .GET_SUCCESS_RATE,
-
-            [
-
-                type,
-
-                startDate,
-
-                endDate,
-
-                merchantId,
-
-                merchantId
-
-            ]
+                .GET_SUCCESS_RATE
 
         );
 
@@ -1561,16 +1392,12 @@ const getSuccessRate = async ({
 
 };
 
-
 // ==========================================================
 // GET PAYMENT METHOD ANALYTICS
 // ==========================================================
 
 const getPaymentMethodAnalytics = async ({
-    type,
-    merchantId = null,
-    startDate,
-    endDate
+    merchantId = null
 }) => {
 
     const connection =
@@ -1583,21 +1410,7 @@ const getPaymentMethodAnalytics = async ({
         ] = await connection.query(
 
             DASHBOARD_QUERIES
-                .GET_PAYMENT_METHOD_ANALYTICS,
-
-            [
-
-                type,
-
-                startDate,
-
-                endDate,
-
-                merchantId,
-
-                merchantId
-
-            ]
+                .GET_PAYMENT_METHOD_ANALYTICS
 
         );
 
@@ -1679,12 +1492,7 @@ const getPaymentMethodAnalytics = async ({
 // GET TRANSACTION STATUS ANALYTICS
 // ==========================================================
 
-const getTransactionStatusAnalytics = async ({
-    type,
-    merchantId = null,
-    startDate,
-    endDate
-}) => {
+const getTransactionStatusAnalytics = async () => {
 
     const connection =
         await db.getConnection();
@@ -1696,21 +1504,7 @@ const getTransactionStatusAnalytics = async ({
         ] = await connection.query(
 
             DASHBOARD_QUERIES
-                .GET_TRANSACTION_STATUS_ANALYTICS,
-
-            [
-
-                type,
-
-                startDate,
-
-                endDate,
-
-                merchantId,
-
-                merchantId
-
-            ]
+                .GET_TRANSACTION_STATUS_ANALYTICS
 
         );
 
@@ -1742,16 +1536,11 @@ const getTransactionStatusAnalytics = async ({
 
 };
 
-
 // ==========================================================
 // GET TOP MERCHANTS
 // ==========================================================
 
 const getTopMerchants = async ({
-    paymentType,
-    merchantId = null,
-    startDate,
-    endDate,
     limit = 10
 }) => {
 
@@ -1777,19 +1566,7 @@ const getTopMerchants = async ({
                 .GET_TOP_MERCHANTS,
 
             [
-
-                paymentType,
-
-                startDate,
-
-                endDate,
-
-                merchantId,
-
-                merchantId,
-
                 safeLimit
-
             ]
 
         );

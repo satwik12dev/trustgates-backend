@@ -1,11 +1,9 @@
+const analyticsValidation = require(
+    "../../../validations/admin/analytics.validation"
+);
 
-const analyticsValidation= require("../../../validations/admin/analytics.validation");
-const {
-    buildDateRange
-} = require("../../../services/admin/dashboard.service");
 const {
     getDashboardAnalytics,
-    getAnalyticsOverview,
     getTransactionTrend,
     getRevenueTrend,
     getPaymentMethodDistribution,
@@ -21,7 +19,9 @@ const {
 
 // ==========================================================
 // GET COMPLETE ANALYTICS
+// GET /admin/analytics
 // ==========================================================
+
 const dashboardAnalytics = async (
     req,
     res,
@@ -31,7 +31,7 @@ const dashboardAnalytics = async (
     try {
 
         // ==================================================
-        // Validate Query Parameters
+        // Validate Only Supported Parameters
         // ==================================================
 
         const {
@@ -39,7 +39,10 @@ const dashboardAnalytics = async (
             value
         } = analyticsValidation.validate(
 
-            req.query,
+            {
+                limit:
+                    req.query.limit
+            },
 
             {
                 abortEarly: true,
@@ -64,26 +67,11 @@ const dashboardAnalytics = async (
 
 
         // ==================================================
-        // Get Complete Analytics
+        // Get Analytics
         // ==================================================
 
         const analytics =
             await getDashboardAnalytics({
-
-                type:
-                    value.type,
-
-                merchantId:
-                    value.merchantId,
-
-                date:
-                    value.date,
-
-                startDate:
-                    value.startDate,
-
-                endDate:
-                    value.endDate,
 
                 limit:
                     value.limit
@@ -104,25 +92,6 @@ const dashboardAnalytics = async (
 
             data: {
 
-                type:
-                    value.type,
-
-                merchantId:
-                    value.merchantId,
-
-                filters: {
-
-                    date:
-                        value.date,
-
-                    startDate:
-                        value.startDate,
-
-                    endDate:
-                        value.endDate
-
-                },
-
                 analytics
 
             }
@@ -137,9 +106,12 @@ const dashboardAnalytics = async (
 
 };
 
+
 // ==========================================================
 // GET TRANSACTION TREND
+// GET /admin/analytics/transaction-trend
 // ==========================================================
+
 const transactionTrend = async (
     req,
     res,
@@ -148,80 +120,9 @@ const transactionTrend = async (
 
     try {
 
-        // ==================================================
-        // Validate Query Parameters
-        // ==================================================
-
-        const {
-            error,
-            value
-        } = analyticsValidation.validate(
-            req.query,
-            {
-                abortEarly: true,
-                convert: true
-            }
-        );
-
-
-        if (error) {
-
-            return res.status(400).json({
-
-                success: false,
-
-                message:
-                    error.details[0].message
-
-            });
-
-        }
-
-
-        // ==================================================
-        // Build Date Range
-        // ==================================================
-
-        const range =
-            buildDateRange({
-
-                date:
-                    value.date,
-
-                startDate:
-                    value.startDate,
-
-                endDate:
-                    value.endDate
-
-            });
-
-
-        // ==================================================
-        // Get Transaction Trend
-        // ==================================================
-
         const trend =
-            await getTransactionTrend({
+            await getTransactionTrend();
 
-                type:
-                    value.type,
-
-                merchantId:
-                    value.merchantId,
-
-                startDate:
-                    range.startDate,
-
-                endDate:
-                    range.endDate
-
-            });
-
-
-        // ==================================================
-        // Response
-        // ==================================================
 
         return res.status(200).json({
 
@@ -231,22 +132,6 @@ const transactionTrend = async (
                 "Transaction trend fetched successfully.",
 
             data: {
-
-                type:
-                    value.type,
-
-                merchantId:
-                    value.merchantId,
-
-                filters: {
-
-                    startDate:
-                        range.startDate,
-
-                    endDate:
-                        range.endDate
-
-                },
 
                 count:
                     trend.length,
@@ -265,9 +150,12 @@ const transactionTrend = async (
 
 };
 
+
 // ==========================================================
 // GET REVENUE TREND
+// GET /admin/analytics/revenue-trend
 // ==========================================================
+
 const revenueTrend = async (
     req,
     res,
@@ -276,80 +164,9 @@ const revenueTrend = async (
 
     try {
 
-        // ==================================================
-        // Validate Query Parameters
-        // ==================================================
-
-        const {
-            error,
-            value
-        } = analyticsValidation.validate(
-            req.query,
-            {
-                abortEarly: true,
-                convert: true
-            }
-        );
-
-
-        if (error) {
-
-            return res.status(400).json({
-
-                success: false,
-
-                message:
-                    error.details[0].message
-
-            });
-
-        }
-
-
-        // ==================================================
-        // Build Date Range
-        // ==================================================
-
-        const range =
-            buildDateRange({
-
-                date:
-                    value.date,
-
-                startDate:
-                    value.startDate,
-
-                endDate:
-                    value.endDate
-
-            });
-
-
-        // ==================================================
-        // Get Revenue Trend
-        // ==================================================
-
         const revenue =
-            await getRevenueTrend({
+            await getRevenueTrend();
 
-                type:
-                    value.type,
-
-                merchantId:
-                    value.merchantId,
-
-                startDate:
-                    range.startDate,
-
-                endDate:
-                    range.endDate
-
-            });
-
-
-        // ==================================================
-        // Response
-        // ==================================================
 
         return res.status(200).json({
 
@@ -359,22 +176,6 @@ const revenueTrend = async (
                 "Revenue trend fetched successfully.",
 
             data: {
-
-                type:
-                    value.type,
-
-                merchantId:
-                    value.merchantId,
-
-                filters: {
-
-                    startDate:
-                        range.startDate,
-
-                    endDate:
-                        range.endDate
-
-                },
 
                 count:
                     revenue.length,
@@ -394,9 +195,12 @@ const revenueTrend = async (
 
 };
 
+
 // ==========================================================
 // GET PAYMENT METHOD DISTRIBUTION
+// GET /admin/analytics/payment-methods
 // ==========================================================
+
 const paymentMethodDistribution = async (
     req,
     res,
@@ -405,80 +209,9 @@ const paymentMethodDistribution = async (
 
     try {
 
-        // ==================================================
-        // Validate Query Parameters
-        // ==================================================
-
-        const {
-            error,
-            value
-        } = analyticsValidation.validate(
-            req.query,
-            {
-                abortEarly: true,
-                convert: true
-            }
-        );
-
-
-        if (error) {
-
-            return res.status(400).json({
-
-                success: false,
-
-                message:
-                    error.details[0].message
-
-            });
-
-        }
-
-
-        // ==================================================
-        // Build Date Range
-        // ==================================================
-
-        const range =
-            buildDateRange({
-
-                date:
-                    value.date,
-
-                startDate:
-                    value.startDate,
-
-                endDate:
-                    value.endDate
-
-            });
-
-
-        // ==================================================
-        // Get Payment Method Distribution
-        // ==================================================
-
         const paymentMethods =
-            await getPaymentMethodDistribution({
+            await getPaymentMethodDistribution();
 
-                type:
-                    value.type,
-
-                merchantId:
-                    value.merchantId,
-
-                startDate:
-                    range.startDate,
-
-                endDate:
-                    range.endDate
-
-            });
-
-
-        // ==================================================
-        // Response
-        // ==================================================
 
         return res.status(200).json({
 
@@ -488,22 +221,6 @@ const paymentMethodDistribution = async (
                 "Payment method distribution fetched successfully.",
 
             data: {
-
-                type:
-                    value.type,
-
-                merchantId:
-                    value.merchantId,
-
-                filters: {
-
-                    startDate:
-                        range.startDate,
-
-                    endDate:
-                        range.endDate
-
-                },
 
                 count:
                     paymentMethods.length,
@@ -522,9 +239,12 @@ const paymentMethodDistribution = async (
 
 };
 
+
 // ==========================================================
 // GET PAYMENT PROVIDER DISTRIBUTION
+// GET /admin/analytics/payment-providers
 // ==========================================================
+
 const paymentProviderDistribution = async (
     req,
     res,
@@ -533,80 +253,9 @@ const paymentProviderDistribution = async (
 
     try {
 
-        // ==================================================
-        // Validate Query Parameters
-        // ==================================================
-
-        const {
-            error,
-            value
-        } = analyticsValidation.validate(
-            req.query,
-            {
-                abortEarly: true,
-                convert: true
-            }
-        );
-
-
-        if (error) {
-
-            return res.status(400).json({
-
-                success: false,
-
-                message:
-                    error.details[0].message
-
-            });
-
-        }
-
-
-        // ==================================================
-        // Build Date Range
-        // ==================================================
-
-        const range =
-            buildDateRange({
-
-                date:
-                    value.date,
-
-                startDate:
-                    value.startDate,
-
-                endDate:
-                    value.endDate
-
-            });
-
-
-        // ==================================================
-        // Get Payment Provider Distribution
-        // ==================================================
-
         const providers =
-            await getPaymentProviderDistribution({
+            await getPaymentProviderDistribution();
 
-                type:
-                    value.type,
-
-                merchantId:
-                    value.merchantId,
-
-                startDate:
-                    range.startDate,
-
-                endDate:
-                    range.endDate
-
-            });
-
-
-        // ==================================================
-        // Response
-        // ==================================================
 
         return res.status(200).json({
 
@@ -616,22 +265,6 @@ const paymentProviderDistribution = async (
                 "Payment provider distribution fetched successfully.",
 
             data: {
-
-                type:
-                    value.type,
-
-                merchantId:
-                    value.merchantId,
-
-                filters: {
-
-                    startDate:
-                        range.startDate,
-
-                    endDate:
-                        range.endDate
-
-                },
 
                 count:
                     providers.length,
@@ -650,9 +283,12 @@ const paymentProviderDistribution = async (
 
 };
 
+
 // ==========================================================
 // GET MERCHANT PERFORMANCE
+// GET /admin/analytics/merchant-performance
 // ==========================================================
+
 const merchantPerformance = async (
     req,
     res,
@@ -662,18 +298,24 @@ const merchantPerformance = async (
     try {
 
         // ==================================================
-        // Validate Query Parameters
+        // Validate Limit
         // ==================================================
 
         const {
             error,
             value
         } = analyticsValidation.validate(
-            req.query,
+
+            {
+                limit:
+                    req.query.limit
+            },
+
             {
                 abortEarly: true,
                 convert: true
             }
+
         );
 
 
@@ -692,52 +334,17 @@ const merchantPerformance = async (
 
 
         // ==================================================
-        // Build Date Range
-        // ==================================================
-
-        const range =
-            buildDateRange({
-
-                date:
-                    value.date,
-
-                startDate:
-                    value.startDate,
-
-                endDate:
-                    value.endDate
-
-            });
-
-
-        // ==================================================
         // Get Merchant Performance
         // ==================================================
 
         const merchants =
             await getMerchantPerformance({
 
-                type:
-                    value.type,
-
-                merchantId:
-                    value.merchantId,
-
-                startDate:
-                    range.startDate,
-
-                endDate:
-                    range.endDate,
-
                 limit:
                     value.limit
 
             });
 
-
-        // ==================================================
-        // Response
-        // ==================================================
 
         return res.status(200).json({
 
@@ -747,22 +354,6 @@ const merchantPerformance = async (
                 "Merchant performance fetched successfully.",
 
             data: {
-
-                type:
-                    value.type,
-
-                merchantId:
-                    value.merchantId,
-
-                filters: {
-
-                    startDate:
-                        range.startDate,
-
-                    endDate:
-                        range.endDate
-
-                },
 
                 count:
                     merchants.length,
@@ -781,8 +372,10 @@ const merchantPerformance = async (
 
 };
 
+
 // ==========================================================
 // GET HOURLY TRANSACTIONS
+// GET /admin/analytics/hourly-transactions
 // ==========================================================
 const hourlyTransactions = async (
     req,
@@ -792,30 +385,23 @@ const hourlyTransactions = async (
 
     try {
 
-        // ==================================================
-        // Validate Query Parameters
-        // ==================================================
-
         const {
-            error,
-            value
-        } = analyticsValidation.validate(
-            req.query,
-            {
-                abortEarly: true,
-                convert: true
-            }
-        );
+            date
+        } = req.query;
 
 
-        if (error) {
+        // ==================================================
+        // Validate Date
+        // ==================================================
+
+        if (!date) {
 
             return res.status(400).json({
 
                 success: false,
 
                 message:
-                    error.details[0].message
+                    "date is required."
 
             });
 
@@ -823,22 +409,52 @@ const hourlyTransactions = async (
 
 
         // ==================================================
-        // Build Date Range
+        // Validate Date Format
+        // YYYY-MM-DD
         // ==================================================
 
-        const range =
-            buildDateRange({
+        const dateRegex =
+            /^\d{4}-\d{2}-\d{2}$/;
 
-                date:
-                    value.date,
 
-                startDate:
-                    value.startDate,
+        if (!dateRegex.test(date)) {
 
-                endDate:
-                    value.endDate
+            return res.status(400).json({
+
+                success: false,
+
+                message:
+                    "date must be in YYYY-MM-DD format."
 
             });
+
+        }
+
+
+        // ==================================================
+        // Validate Actual Date
+        // ==================================================
+
+        const parsedDate =
+            new Date(`${date}T00:00:00`);
+
+
+        if (
+            Number.isNaN(
+                parsedDate.getTime()
+            )
+        ) {
+
+            return res.status(400).json({
+
+                success: false,
+
+                message:
+                    "Invalid date."
+
+            });
+
+        }
 
 
         // ==================================================
@@ -848,17 +464,7 @@ const hourlyTransactions = async (
         const hourlyData =
             await getHourlyTransactions({
 
-                type:
-                    value.type,
-
-                merchantId:
-                    value.merchantId,
-
-                startDate:
-                    range.startDate,
-
-                endDate:
-                    range.endDate
+                date
 
             });
 
@@ -876,24 +482,7 @@ const hourlyTransactions = async (
 
             data: {
 
-                type:
-                    value.type,
-
-                merchantId:
-                    value.merchantId,
-
-                filters: {
-
-                    startDate:
-                        range.startDate,
-
-                    endDate:
-                        range.endDate
-
-                },
-
-                count:
-                    hourlyData.length,
+                date,
 
                 hourlyTransactions:
                     hourlyData
@@ -913,7 +502,9 @@ const hourlyTransactions = async (
 
 // ==========================================================
 // GET CURRENCY ANALYTICS
+// GET /admin/analytics/currency
 // ==========================================================
+
 const currencyAnalytics = async (
     req,
     res,
@@ -922,80 +513,9 @@ const currencyAnalytics = async (
 
     try {
 
-        // ==================================================
-        // Validate Query Parameters
-        // ==================================================
-
-        const {
-            error,
-            value
-        } = analyticsValidation.validate(
-            req.query,
-            {
-                abortEarly: true,
-                convert: true
-            }
-        );
-
-
-        if (error) {
-
-            return res.status(400).json({
-
-                success: false,
-
-                message:
-                    error.details[0].message
-
-            });
-
-        }
-
-
-        // ==================================================
-        // Build Date Range
-        // ==================================================
-
-        const range =
-            buildDateRange({
-
-                date:
-                    value.date,
-
-                startDate:
-                    value.startDate,
-
-                endDate:
-                    value.endDate
-
-            });
-
-
-        // ==================================================
-        // Get Currency Analytics
-        // ==================================================
-
         const currencies =
-            await getCurrencyAnalytics({
+            await getCurrencyAnalytics();
 
-                type:
-                    value.type,
-
-                merchantId:
-                    value.merchantId,
-
-                startDate:
-                    range.startDate,
-
-                endDate:
-                    range.endDate
-
-            });
-
-
-        // ==================================================
-        // Response
-        // ==================================================
 
         return res.status(200).json({
 
@@ -1005,22 +525,6 @@ const currencyAnalytics = async (
                 "Currency analytics fetched successfully.",
 
             data: {
-
-                type:
-                    value.type,
-
-                merchantId:
-                    value.merchantId,
-
-                filters: {
-
-                    startDate:
-                        range.startDate,
-
-                    endDate:
-                        range.endDate
-
-                },
 
                 count:
                     currencies.length,
@@ -1039,9 +543,12 @@ const currencyAnalytics = async (
 
 };
 
+
 // ==========================================================
 // GET STATUS ANALYTICS
+// GET /admin/analytics/status
 // ==========================================================
+
 const statusAnalytics = async (
     req,
     res,
@@ -1050,80 +557,9 @@ const statusAnalytics = async (
 
     try {
 
-        // ==================================================
-        // Validate Query Parameters
-        // ==================================================
-
-        const {
-            error,
-            value
-        } = analyticsValidation.validate(
-            req.query,
-            {
-                abortEarly: true,
-                convert: true
-            }
-        );
-
-
-        if (error) {
-
-            return res.status(400).json({
-
-                success: false,
-
-                message:
-                    error.details[0].message
-
-            });
-
-        }
-
-
-        // ==================================================
-        // Build Date Range
-        // ==================================================
-
-        const range =
-            buildDateRange({
-
-                date:
-                    value.date,
-
-                startDate:
-                    value.startDate,
-
-                endDate:
-                    value.endDate
-
-            });
-
-
-        // ==================================================
-        // Get Status Analytics
-        // ==================================================
-
         const statuses =
-            await getStatusAnalytics({
+            await getStatusAnalytics();
 
-                type:
-                    value.type,
-
-                merchantId:
-                    value.merchantId,
-
-                startDate:
-                    range.startDate,
-
-                endDate:
-                    range.endDate
-
-            });
-
-
-        // ==================================================
-        // Response
-        // ==================================================
 
         return res.status(200).json({
 
@@ -1133,22 +569,6 @@ const statusAnalytics = async (
                 "Transaction status analytics fetched successfully.",
 
             data: {
-
-                type:
-                    value.type,
-
-                merchantId:
-                    value.merchantId,
-
-                filters: {
-
-                    startDate:
-                        range.startDate,
-
-                    endDate:
-                        range.endDate
-
-                },
 
                 count:
                     statuses.length,
@@ -1167,18 +587,29 @@ const statusAnalytics = async (
 
 };
 
+
 // ==========================================================
 // EXPORT
 // ==========================================================
+
 module.exports = {
+
     dashboardAnalytics,
+
     transactionTrend,
+
     revenueTrend,
+
     paymentMethodDistribution,
+
     paymentProviderDistribution,
+
     merchantPerformance,
+
     hourlyTransactions,
+
     currencyAnalytics,
+
     statusAnalytics
 
 };

@@ -314,88 +314,138 @@ const UPI_QUERIES = Object.freeze({
     // ==========================================================
 
     GET_UPI_ANALYTICS: `
+SELECT
 
-        SELECT
+    DATE(t.created_at) AS report_date,
 
-            DATE(t.created_at) AS report_date,
+    COUNT(*) AS total_transactions,
 
-            COUNT(*) AS total_transactions,
+    SUM(
+        CASE
+            WHEN t.status = 'SUCCESS'
+            THEN 1
+            ELSE 0
+        END
+    ) AS successful_transactions,
 
+    SUM(
+        CASE
+            WHEN t.status = 'FAILED'
+            THEN 1
+            ELSE 0
+        END
+    ) AS failed_transactions,
+
+    SUM(
+        CASE
+            WHEN t.status IN (
+                'PENDING',
+                'CREATED',
+                'AUTHORIZED'
+            )
+            THEN 1
+            ELSE 0
+        END
+    ) AS pending_transactions,
+
+    SUM(
+        CASE
+            WHEN t.status = 'REFUNDED'
+            THEN 1
+            ELSE 0
+        END
+    ) AS refunded_transactions,
+
+    COALESCE(
+        SUM(
+            CASE
+                WHEN t.status = 'SUCCESS'
+                THEN t.amount
+                ELSE 0
+            END
+        ),
+        0
+    ) AS successful_amount,
+
+    COALESCE(
+        SUM(t.amount),
+        0
+    ) AS total_amount,
+
+    COALESCE(
+        SUM(
+            CASE
+                WHEN t.status = 'SUCCESS'
+                THEN (
+                    SELECT COALESCE(
+                        SUM(r.amount),
+                        0
+                    )
+                    FROM transaction_refunds r
+                    WHERE
+                        r.transaction_id = t.transaction_id
+                        AND r.refund_status = 'PROCESSED'
+                )
+                ELSE 0
+            END
+        ),
+        0
+    ) AS refunded_amount,
+
+    (
+        COALESCE(
             SUM(
                 CASE
                     WHEN t.status = 'SUCCESS'
-                    THEN 1
+                    THEN t.amount
                     ELSE 0
                 END
-            ) AS successful_transactions,
-
+            ),
+            0
+        )
+        -
+        COALESCE(
             SUM(
                 CASE
-                    WHEN t.status = 'FAILED'
-                    THEN 1
-                    ELSE 0
-                END
-            ) AS failed_transactions,
-
-            SUM(
-                CASE
-                    WHEN t.status IN (
-                        'PENDING',
-                        'CREATED',
-                        'AUTHORIZED'
+                    WHEN t.status = 'SUCCESS'
+                    THEN (
+                        SELECT COALESCE(
+                            SUM(r.amount),
+                            0
+                        )
+                        FROM transaction_refunds r
+                        WHERE
+                            r.transaction_id = t.transaction_id
+                            AND r.refund_status = 'PROCESSED'
                     )
-                    THEN 1
                     ELSE 0
                 END
-            ) AS pending_transactions,
+            ),
+            0
+        )
+    ) AS net_revenue
 
-            SUM(
-                CASE
-                    WHEN t.status = 'REFUNDED'
-                    THEN 1
-                    ELSE 0
-                END
-            ) AS refunded_transactions,
+FROM transactions t
 
-            COALESCE(
-                SUM(
-                    CASE
-                        WHEN t.status = 'SUCCESS'
-                        THEN t.amount
-                        ELSE 0
-                    END
-                ),
-                0
-            ) AS successful_amount,
+INNER JOIN transaction_upi tu
+    ON tu.transaction_id = t.transaction_id
 
-            COALESCE(
-                SUM(t.amount),
-                0
-            ) AS total_amount
+WHERE
+    (
+        ? IS NULL
+        OR t.merchant_id = ?
+    )
 
-        FROM transaction_upi tu
+    AND t.created_at >= ?
 
-        INNER JOIN transactions t
-            ON t.transaction_id = tu.transaction_id
+    AND t.created_at < ?
 
-        WHERE
+GROUP BY
+    DATE(t.created_at)
 
-            (
-                ? IS NULL
-                OR t.merchant_id = ?
-            )
-
-            AND t.created_at >= ?
-
-            AND t.created_at < ?
-
-        GROUP BY
-            DATE(t.created_at)
-
-        ORDER BY
-            report_date ASC
-
-    `,
+ORDER BY
+    report_date ASC;
+`,
 
 
     // ==========================================================

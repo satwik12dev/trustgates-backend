@@ -694,6 +694,16 @@ const getUpiAnalytics = async ({
             totalAmount:
                 Number(
                     row.total_amount || 0
+                ),
+
+            refundedAmount:
+                Number(
+                    row.refunded_amount || 0
+                ),
+
+            netRevenue:
+                Number(
+                    row.net_revenue || 0
                 )
 
         }));
@@ -759,8 +769,8 @@ const getBankAnalytics = async ({
 
         return rows.map((row) => ({
 
-            accountType:
-                row.account_type,
+            bank:
+                row.bank || "UNKNOWN",
 
             totalTransactions:
                 Number(
@@ -781,6 +791,7 @@ const getBankAnalytics = async ({
                 Number(
                     row.pending_transactions || 0
                 ),
+
 
             successfulAmount:
                 Number(
