@@ -528,18 +528,6 @@ const getAdminDashboard = async ({
                 DASHBOARD_QUERIES
                     .GET_DASHBOARD_SUMMARY,
 
-                [
-                    paymentType,
-
-                    selectedRange.startDate,
-
-                    selectedRange.endDate,
-
-                    merchantId,
-
-                    merchantId
-                ]
-
             );
 
 
