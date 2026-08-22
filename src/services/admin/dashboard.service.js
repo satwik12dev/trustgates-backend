@@ -589,18 +589,10 @@ const getAdminDashboard = async ({
                 .GET_TODAYS_REVENUE,
 
             [
-
-                paymentType,
-
-                todayRange.startDate,
-
-                todayRange.endDate,
-
-                merchantId,
-
-                merchantId
-
-            ]
+    paymentType,
+    merchantId,
+    merchantId
+]
 
         );
 
