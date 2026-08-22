@@ -25,9 +25,15 @@ const {
 
 const dashboardValidation = Joi.object({
 
+    // ======================================================
+    // PAYMENT TYPE
+    // Optional for main dashboard
+    // ======================================================
+
     paymentType: Joi.string()
         .valid("PAYIN", "PAYOUT")
-        .required(),
+        .allow(null, "")
+        .default(null),
 
     merchantId: Joi.number()
         .integer()
@@ -149,6 +155,7 @@ const dashboardValidation = Joi.object({
 
 // ==========================================================
 // GET ADMIN DASHBOARD
+// GET /admin/dashboard
 // ==========================================================
 
 const dashboardOverview = async (
@@ -246,6 +253,7 @@ const dashboardOverview = async (
     }
 
 };
+
 
 // ==========================================================
 // GET DASHBOARD SUMMARY
@@ -376,6 +384,7 @@ const summaryCards = async (
 
 };
 
+
 // ==========================================================
 // GET RECENT TRANSACTIONS
 // ==========================================================
@@ -387,10 +396,6 @@ const recentTransactions = async (
 ) => {
 
     try {
-
-        // ==================================================
-        // Query Parameters
-        // ==================================================
 
         const {
             type,
@@ -552,6 +557,7 @@ const recentTransactions = async (
 
 };
 
+
 // ==========================================================
 // GET TRANSACTION VOLUME
 // ==========================================================
@@ -563,10 +569,6 @@ const transactionVolume = async (
 ) => {
 
     try {
-
-        // ==================================================
-        // Query Parameters
-        // ==================================================
 
         const {
             type,
@@ -726,6 +728,7 @@ const transactionVolume = async (
     }
 
 };
+
 
 // ==========================================================
 // GET SUCCESS RATE
@@ -1239,6 +1242,8 @@ const transactionStatusAnalytics = async (
     }
 
 };
+
+
 // ==========================================================
 // GET TOP MERCHANTS
 // ==========================================================
@@ -1468,7 +1473,10 @@ const topMerchants = async (
 // GET /transactions
 // ==========================================================
 
-const transactionList = async (req, res) => {
+const transactionList = async (
+    req,
+    res
+) => {
 
     try {
 
@@ -1561,7 +1569,10 @@ const transactionList = async (req, res) => {
 // GET /transactions/latest
 // ==========================================================
 
-const latestTransactions = async (req, res) => {
+const latestTransactions = async (
+    req,
+    res
+) => {
 
     try {
 
@@ -1632,7 +1643,10 @@ const latestTransactions = async (req, res) => {
 // GET /transactions/dashboard
 // ==========================================================
 
-const dashboardTransactions = async (req, res) => {
+const dashboardTransactions = async (
+    req,
+    res
+) => {
 
     try {
 
@@ -1644,7 +1658,10 @@ const dashboardTransactions = async (req, res) => {
         } = req.query;
 
 
-        if (!startDate || !endDate) {
+        if (
+            !startDate ||
+            !endDate
+        ) {
 
             return res.status(400).json({
 
@@ -1742,11 +1759,15 @@ const dashboardTransactions = async (req, res) => {
 
 };
 
+
 // ==========================================================
 // GET /transactions/:transactionId
 // ==========================================================
 
-const transactionDetails = async (req, res) => {
+const transactionDetails = async (
+    req,
+    res
+) => {
 
     try {
 
@@ -1757,7 +1778,9 @@ const transactionDetails = async (req, res) => {
 
         if (
             !transactionId ||
-            !/^\d+$/.test(transactionId)
+            !/^\d+$/.test(
+                transactionId
+            )
         ) {
 
             return res.status(400).json({
@@ -1781,7 +1804,9 @@ const transactionDetails = async (req, res) => {
 
         const transaction =
             await getTransactionById(
-                Number(transactionId)
+                Number(
+                    transactionId
+                )
             );
 
 
@@ -1813,7 +1838,8 @@ const transactionDetails = async (req, res) => {
             message:
                 "Transaction details fetched successfully.",
 
-            data: transaction
+            data:
+                transaction
 
         });
 
@@ -1844,6 +1870,8 @@ const transactionDetails = async (req, res) => {
     }
 
 };
+
+
 // ==========================================================
 // EXPORT
 // ==========================================================
@@ -1851,15 +1879,27 @@ const transactionDetails = async (req, res) => {
 module.exports = {
 
     dashboardOverview,
+
     summaryCards,
+
     recentTransactions,
+
     transactionVolume,
+
     successRate,
+
     paymentMethodAnalytics,
+
     transactionStatusAnalytics,
+
     topMerchants,
+
     transactionList,
+
     latestTransactions,
+
     dashboardTransactions,
+
     transactionDetails
+
 };
