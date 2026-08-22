@@ -86,16 +86,10 @@ const DASHBOARD_QUERIES = Object.freeze({
 
         FROM transactions
 
-        WHERE payment_type = ?
-
-          AND created_at >= ?
-
-          AND created_at < ?
-
-          AND (
-                ? IS NULL
-                OR merchant_id = ?
-          )
+       WHERE (
+    ? IS NULL
+    OR merchant_id = ?
+)
 
     `,
 
