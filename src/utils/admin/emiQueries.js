@@ -118,124 +118,118 @@ const EMI_QUERIES = Object.freeze({
 
     GET_EMI_SUMMARY: `
 
-        SELECT
+    SELECT
 
-            COUNT(*) AS total_transactions,
+        COUNT(*) AS total_transactions,
 
+        SUM(
+            CASE
+                WHEN t.status = 'SUCCESS'
+                THEN 1
+                ELSE 0
+            END
+        ) AS successful_transactions,
+
+        SUM(
+            CASE
+                WHEN t.status = 'FAILED'
+                THEN 1
+                ELSE 0
+            END
+        ) AS failed_transactions,
+
+        SUM(
+            CASE
+                WHEN t.status IN (
+                    'PENDING',
+                    'CREATED',
+                    'AUTHORIZED'
+                )
+                THEN 1
+                ELSE 0
+            END
+        ) AS pending_transactions,
+
+        SUM(
+            CASE
+                WHEN t.status = 'CANCELLED'
+                THEN 1
+                ELSE 0
+            END
+        ) AS cancelled_transactions,
+
+        SUM(
+            CASE
+                WHEN t.status = 'REFUNDED'
+                THEN 1
+                ELSE 0
+            END
+        ) AS refunded_transactions,
+
+        SUM(
+            CASE
+                WHEN t.status = 'PARTIALLY_REFUNDED'
+                THEN 1
+                ELSE 0
+            END
+        ) AS partially_refunded_transactions,
+
+        SUM(
+            CASE
+                WHEN t.status = 'CHARGEBACK'
+                THEN 1
+                ELSE 0
+            END
+        ) AS chargeback_transactions,
+
+        COALESCE(
+            SUM(t.amount),
+            0
+        ) AS total_amount,
+
+        COALESCE(
             SUM(
                 CASE
                     WHEN t.status = 'SUCCESS'
-                    THEN 1
+                    THEN t.amount
                     ELSE 0
                 END
-            ) AS successful_transactions,
+            ),
+            0
+        ) AS successful_amount,
 
-            SUM(
-                CASE
-                    WHEN t.status = 'FAILED'
-                    THEN 1
-                    ELSE 0
-                END
-            ) AS failed_transactions,
+        COALESCE(
+            AVG(t.amount),
+            0
+        ) AS average_transaction_value,
 
-            SUM(
-                CASE
-                    WHEN t.status IN (
-                        'PENDING',
-                        'CREATED',
-                        'AUTHORIZED'
-                    )
-                    THEN 1
-                    ELSE 0
-                END
-            ) AS pending_transactions,
+        COALESCE(
+            AVG(e.interest_rate),
+            0
+        ) AS average_interest_rate,
 
-            SUM(
-                CASE
-                    WHEN t.status = 'CANCELLED'
-                    THEN 1
-                    ELSE 0
-                END
-            ) AS cancelled_transactions,
+        COALESCE(
+            AVG(e.tenure),
+            0
+        ) AS average_tenure
 
-            SUM(
-                CASE
-                    WHEN t.status = 'REFUNDED'
-                    THEN 1
-                    ELSE 0
-                END
-            ) AS refunded_transactions,
+    FROM transaction_emi e
 
-            SUM(
-                CASE
-                    WHEN t.status = 'PARTIALLY_REFUNDED'
-                    THEN 1
-                    ELSE 0
-                END
-            ) AS partially_refunded_transactions,
+    INNER JOIN transactions t
+        ON t.transaction_id = e.transaction_id
 
-            SUM(
-                CASE
-                    WHEN t.status = 'CHARGEBACK'
-                    THEN 1
-                    ELSE 0
-                END
-            ) AS chargeback_transactions,
+    WHERE
 
-            COALESCE(
-                SUM(t.amount),
-                0
-            ) AS total_amount,
+        (
+            ? IS NULL
+            OR t.merchant_id = ?
+        )
 
-            COALESCE(
-                SUM(
-                    CASE
-                        WHEN t.status = 'SUCCESS'
-                        THEN t.amount
-                        ELSE 0
-                    END
-                ),
-                0
-            ) AS successful_amount,
+        AND t.created_at >= ?
 
-            COALESCE(
-                AVG(
-                    CASE
-                        WHEN t.status = 'SUCCESS'
-                        THEN t.amount
-                        ELSE NULL
-                    END
-                ),
-                0
-            ) AS average_transaction_value,
+        AND t.created_at < ?
 
-            COALESCE(
-                AVG(e.interest_rate),
-                0
-            ) AS average_interest_rate,
-
-            COALESCE(
-                AVG(e.tenure),
-                0
-            ) AS average_tenure
-
-        FROM transaction_emi e
-
-        INNER JOIN transactions t
-            ON t.transaction_id = e.transaction_id
-
-        WHERE
-
-            (
-                ? IS NULL
-                OR t.merchant_id = ?
-            )
-
-            AND t.created_at >= ?
-
-            AND t.created_at < ?
-
-    `,
+`,
 
 
     // ==========================================================
