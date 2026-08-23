@@ -699,6 +699,10 @@ const getAdminDashboard = async ({
             DASHBOARD_QUERIES
                 .GET_TOP_MERCHANTS,
 
+            [
+                safeLimit
+            ]
+
         );
 
 
