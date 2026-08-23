@@ -88,9 +88,33 @@ const getHourlyTransactions = async ({
     let query = `
         SELECT
             HOUR(created_at) AS hour,
+
             COUNT(*) AS totalTransactions,
-            ROUND(IFNULL(SUM(amount),0),2) AS totalAmount
+
+            SUM(
+                CASE
+                    WHEN status = 'SUCCESS'
+                    THEN 1
+                    ELSE 0
+                END
+            ) AS successfulTransactions,
+
+            ROUND(
+                IFNULL(
+                    SUM(
+                        CASE
+                            WHEN status = 'SUCCESS'
+                            THEN amount
+                            ELSE 0
+                        END
+                    ),
+                    0
+                ),
+                2
+            ) AS totalAmount
+
         FROM transactions
+
         WHERE DATE(created_at)=?
     `;
 
@@ -246,19 +270,37 @@ const getPaymentMethodDistribution = async ({
 }) => {
 
     let query = `
-
         SELECT
 
             payment_method,
 
             COUNT(*) AS totalTransactions,
 
-            ROUND(IFNULL(SUM(amount),0),2) AS totalAmount
+            SUM(
+                CASE
+                    WHEN status = 'SUCCESS'
+                    THEN 1
+                    ELSE 0
+                END
+            ) AS successfulTransactions,
+
+            ROUND(
+                IFNULL(
+                    SUM(
+                        CASE
+                            WHEN status = 'SUCCESS'
+                            THEN amount
+                            ELSE 0
+                        END
+                    ),
+                    0
+                ),
+                2
+            ) AS totalAmount
 
         FROM transactions
 
         WHERE DATE(created_at)=?
-
     `;
 
     const formattedDate =
@@ -268,26 +310,17 @@ const getPaymentMethodDistribution = async ({
 
     const params = [formattedDate];
 
-
     if (merchantId) {
-
         query += " AND merchant_id=?";
-
         params.push(merchantId);
-
     }
 
     query += `
-
         GROUP BY payment_method
-
         ORDER BY totalTransactions DESC
-
     `;
 
-
     const [rows] = await pool.query(query, params);
-
 
     return rows;
 };
@@ -305,20 +338,39 @@ const getPaymentTypeDistribution = async ({
 }) => {
 
     let query = `
-
         SELECT
 
             payment_type,
 
             COUNT(*) AS totalTransactions,
 
-            ROUND(IFNULL(SUM(amount),0),2) AS totalAmount
+            SUM(
+                CASE
+                    WHEN status = 'SUCCESS'
+                    THEN 1
+                    ELSE 0
+                END
+            ) AS successfulTransactions,
+
+            ROUND(
+                IFNULL(
+                    SUM(
+                        CASE
+                            WHEN status = 'SUCCESS'
+                            THEN amount
+                            ELSE 0
+                        END
+                    ),
+                    0
+                ),
+                2
+            ) AS totalAmount
 
         FROM transactions
 
         WHERE DATE(created_at)=?
-
     `;
+
     const formattedDate =
         typeof date === "string"
             ? date
@@ -326,26 +378,17 @@ const getPaymentTypeDistribution = async ({
 
     const params = [formattedDate];
 
-
     if (merchantId) {
-
         query += " AND merchant_id=?";
-
         params.push(merchantId);
-
     }
 
     query += `
-
         GROUP BY payment_type
-
         ORDER BY totalTransactions DESC
-
     `;
 
-
     const [rows] = await pool.query(query, params);
-
 
     return rows;
 };
