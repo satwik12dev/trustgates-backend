@@ -160,14 +160,18 @@ ORDER BY
 
         FROM transactions
 
-        GROUP BY
-            DATE_FORMAT(
-                created_at,
-                '%Y-%m-%d'
-            )
+WHERE
+    created_at >= ?
+    AND created_at < ?
 
-        ORDER BY
-            report_date ASC
+GROUP BY
+    DATE_FORMAT(
+        created_at,
+        '%Y-%m-%d'
+    )
+
+ORDER BY
+    report_date ASC
 
     `,
     // ==========================================================
