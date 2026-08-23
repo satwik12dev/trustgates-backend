@@ -2112,7 +2112,11 @@ const getTransactionDashboard = async ({
             chargebackAmount:
                 toNumber(
                     data.chargeback_amount
-                )
+                ),
+            createdAmount:
+                toNumber(
+                    data.created_amount
+                ),
 
         };
 
