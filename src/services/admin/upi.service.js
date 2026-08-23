@@ -139,6 +139,7 @@ const getUpiTransactions = async ({
                 searchValue,
                 searchValue,
                 searchValue,
+                searchValue,
                 searchValue
 
             ]
@@ -212,6 +213,9 @@ const getUpiTransactions = async ({
 
                 bankReference:
                     row.bank_reference,
+
+                bankName:
+                    row.bank_name || null,
 
                 gatewayResponseCode:
                     row.gateway_response_code,
@@ -558,6 +562,9 @@ const getRecentUpiTransactions = async ({
                     bankReference:
                         row.bank_reference,
 
+                    bankName:
+                        row.bank_name || null,
+
                     gatewayResponseCode:
                         row.gateway_response_code,
 
@@ -791,7 +798,6 @@ const getBankAnalytics = async ({
                 Number(
                     row.pending_transactions || 0
                 ),
-
 
             successfulAmount:
                 Number(
