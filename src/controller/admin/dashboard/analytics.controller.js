@@ -172,8 +172,17 @@ const revenueTrend = async (
 
     try {
 
+        const {
+            startDate,
+            endDate
+        } = req.query;
+
+
         const revenue =
-            await getRevenueTrend();
+            await getRevenueTrend({
+                startDate,
+                endDate
+            });
 
 
         return res.status(200).json({
@@ -202,7 +211,6 @@ const revenueTrend = async (
     }
 
 };
-
 
 // ==========================================================
 // GET PAYMENT METHOD DISTRIBUTION
