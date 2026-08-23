@@ -665,8 +665,6 @@ const getDashboardAnalytics = async ({
 
         merchantPerformance,
 
-        hourlyTransactions,
-
         currencyAnalytics,
 
         statusAnalytics
@@ -686,8 +684,6 @@ const getDashboardAnalytics = async ({
         getMerchantPerformance({
             limit
         }),
-
-        getHourlyTransactions(),
 
         getCurrencyAnalytics(),
 
@@ -710,14 +706,11 @@ const getDashboardAnalytics = async ({
 
         merchantPerformance,
 
-        hourlyTransactions,
-
         currencyAnalytics,
 
         statusAnalytics
 
     };
-
 };
 
 
