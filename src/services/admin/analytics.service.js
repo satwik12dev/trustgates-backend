@@ -728,8 +728,6 @@ const getDashboardAnalytics = async ({
 
         overview,
 
-        revenueTrend,
-
         paymentMethodDistribution,
 
         paymentProviderDistribution,
@@ -744,7 +742,6 @@ const getDashboardAnalytics = async ({
 
         getAnalyticsOverview(),
 
-        getRevenueTrend(),
 
         getPaymentMethodDistribution(),
 
@@ -764,8 +761,6 @@ const getDashboardAnalytics = async ({
     return {
 
         overview,
-
-        revenueTrend,
 
         paymentMethodDistribution,
 
