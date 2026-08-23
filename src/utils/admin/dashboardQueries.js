@@ -924,26 +924,37 @@ GET_RECENT_TRANSACTIONS: `
             ) AS total_amount,
 
             COALESCE(
-                SUM(
-                    CASE
-                        WHEN status = 'SUCCESS'
-                        THEN amount
-                        ELSE 0
-                    END
-                ),
-                0
-            ) AS successful_amount,
+    SUM(
+        CASE
+            WHEN status = 'SUCCESS'
+            THEN amount
+            ELSE 0
+        END
+    ),
+    0
+) AS successful_amount,
 
-            COALESCE(
-                SUM(
-                    CASE
-                        WHEN status = 'FAILED'
-                        THEN amount
-                        ELSE 0
-                    END
-                ),
-                0
-            ) AS failed_amount,
+COALESCE(
+    SUM(
+        CASE
+            WHEN status = 'CREATED'
+            THEN amount
+            ELSE 0
+        END
+    ),
+    0
+) AS created_amount,
+
+COALESCE(
+    SUM(
+        CASE
+            WHEN status = 'FAILED'
+            THEN amount
+            ELSE 0
+        END
+    ),
+    0
+) AS failed_amount,
 
             COALESCE(
                 SUM(
