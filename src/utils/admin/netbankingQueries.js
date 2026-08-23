@@ -201,6 +201,16 @@ const NETBANKING_QUERIES = Object.freeze({
                 ),
                 0
             ) AS successful_amount,
+            COALESCE(
+    SUM(
+        CASE
+            WHEN t.status = 'REFUNDED'
+            THEN t.amount
+            ELSE 0
+        END
+    ),
+    0
+) AS refunded_amount,
 
             COALESCE(
                 AVG(
