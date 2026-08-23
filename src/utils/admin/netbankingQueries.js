@@ -201,16 +201,17 @@ const NETBANKING_QUERIES = Object.freeze({
                 ),
                 0
             ) AS successful_amount,
+
             COALESCE(
-    SUM(
-        CASE
-            WHEN t.status = 'REFUNDED'
-            THEN t.amount
-            ELSE 0
-        END
-    ),
-    0
-) AS refunded_amount,
+                SUM(
+                    CASE
+                        WHEN t.status = 'REFUNDED'
+                        THEN t.amount
+                        ELSE 0
+                    END
+                ),
+                0
+            ) AS refunded_amount,
 
             COALESCE(
                 AVG(
@@ -348,13 +349,35 @@ const NETBANKING_QUERIES = Object.freeze({
             COALESCE(
                 SUM(
                     CASE
+                        WHEN t.status = 'REFUNDED'
+                        THEN 1
+                        ELSE 0
+                    END
+                ),
+                0
+            ) AS refunded_transactions,
+
+            COALESCE(
+                SUM(
+                    CASE
                         WHEN t.status = 'SUCCESS'
                         THEN t.amount
                         ELSE 0
                     END
                 ),
                 0
-            ) AS successful_amount
+            ) AS successful_amount,
+
+            COALESCE(
+                SUM(
+                    CASE
+                        WHEN t.status = 'REFUNDED'
+                        THEN t.amount
+                        ELSE 0
+                    END
+                ),
+                0
+            ) AS refunded_amount
 
         FROM transaction_netbanking nb
 
@@ -659,13 +682,35 @@ const NETBANKING_QUERIES = Object.freeze({
             COALESCE(
                 SUM(
                     CASE
+                        WHEN t.status = 'REFUNDED'
+                        THEN 1
+                        ELSE 0
+                    END
+                ),
+                0
+            ) AS refunded_transactions,
+
+            COALESCE(
+                SUM(
+                    CASE
                         WHEN t.status = 'SUCCESS'
                         THEN t.amount
                         ELSE 0
                     END
                 ),
                 0
-            ) AS successful_amount
+            ) AS successful_amount,
+
+            COALESCE(
+                SUM(
+                    CASE
+                        WHEN t.status = 'REFUNDED'
+                        THEN t.amount
+                        ELSE 0
+                    END
+                ),
+                0
+            ) AS refunded_amount
 
         FROM transaction_netbanking nb
 
