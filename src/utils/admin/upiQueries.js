@@ -518,7 +518,7 @@ ORDER BY
             OR t.merchant_id = ?
         )
 
-    GROUP BYa
+    GROUP BY
         COALESCE(
             tu.bank_name,
             'UNKNOWN'
