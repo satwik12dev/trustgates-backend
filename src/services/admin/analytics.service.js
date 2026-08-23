@@ -131,8 +131,8 @@ const getAnalyticsOverview = async () => {
 // ==========================================================
 
 const getTransactionTrend = async ({
-    startDate = null,
-    endDate = null
+    startDate,
+    endDate
 } = {}) => {
 
     const connection =
@@ -154,34 +154,64 @@ const getTransactionTrend = async ({
 
         );
 
-        return rows.map(
-            (row) => ({
+        const dataMap = new Map(
+            rows.map(row => [
+                row.report_date,
+                row
+            ])
+        );
 
-                date:
-                    row.report_date,
+        const result = [];
+
+        const currentDate =
+            new Date(`${startDate}T00:00:00`);
+
+        const lastDate =
+            new Date(`${endDate}T00:00:00`);
+
+        while (currentDate <= lastDate) {
+
+            const date =
+                currentDate
+                    .toISOString()
+                    .split("T")[0];
+
+            const row =
+                dataMap.get(date);
+
+            result.push({
+
+                date,
 
                 totalTransactions:
                     toNumber(
-                        row.total_transactions
+                        row?.total_transactions
                     ),
 
                 successfulTransactions:
                     toNumber(
-                        row.successful_transactions
+                        row?.successful_transactions
                     ),
 
                 failedTransactions:
                     toNumber(
-                        row.failed_transactions
+                        row?.failed_transactions
                     ),
 
                 pendingTransactions:
                     toNumber(
-                        row.pending_transactions
+                        row?.pending_transactions
                     )
 
-            })
-        );
+            });
+
+            currentDate.setDate(
+                currentDate.getDate() + 1
+            );
+
+        }
+
+        return result;
 
     } finally {
 
@@ -190,7 +220,6 @@ const getTransactionTrend = async ({
     }
 
 };
-
 
 // ==========================================================
 // REVENUE TREND
