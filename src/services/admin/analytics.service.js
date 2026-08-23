@@ -130,7 +130,10 @@ const getAnalyticsOverview = async () => {
 // TRANSACTION TREND
 // ==========================================================
 
-const getTransactionTrend = async () => {
+const getTransactionTrend = async ({
+    startDate = null,
+    endDate = null
+} = {}) => {
 
     const connection =
         await db.getConnection();
@@ -142,10 +145,14 @@ const getTransactionTrend = async () => {
         ] = await connection.query(
 
             ANALYTICS_QUERIES
-                .GET_TRANSACTION_TREND
+                .GET_TRANSACTION_TREND,
+
+            [
+                startDate,
+                endDate
+            ]
 
         );
-
 
         return rows.map(
             (row) => ({
@@ -655,8 +662,6 @@ const getDashboardAnalytics = async ({
 
         overview,
 
-        transactionTrend,
-
         revenueTrend,
 
         paymentMethodDistribution,
@@ -672,8 +677,6 @@ const getDashboardAnalytics = async ({
     ] = await Promise.all([
 
         getAnalyticsOverview(),
-
-        getTransactionTrend(),
 
         getRevenueTrend(),
 
@@ -695,8 +698,6 @@ const getDashboardAnalytics = async ({
     return {
 
         overview,
-
-        transactionTrend,
 
         revenueTrend,
 
