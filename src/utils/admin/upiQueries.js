@@ -454,80 +454,80 @@ ORDER BY
 
     GET_UPI_BANK_ANALYTICS: `
 
-        SELECT
+    SELECT
 
-            COALESCE(
-                tu.payer_account_type,
-                'UNKNOWN'
-            ) AS account_type,
+        COALESCE(
+            tu.bank_name,
+            'UNKNOWN'
+        ) AS bank,
 
-            COUNT(*) AS total_transactions,
+        COUNT(*) AS total_transactions,
 
+        SUM(
+            CASE
+                WHEN t.status = 'SUCCESS'
+                THEN 1
+                ELSE 0
+            END
+        ) AS successful_transactions,
+
+        SUM(
+            CASE
+                WHEN t.status = 'FAILED'
+                THEN 1
+                ELSE 0
+            END
+        ) AS failed_transactions,
+
+        SUM(
+            CASE
+                WHEN t.status IN (
+                    'PENDING',
+                    'CREATED',
+                    'AUTHORIZED'
+                )
+                THEN 1
+                ELSE 0
+            END
+        ) AS pending_transactions,
+
+        COALESCE(
             SUM(
                 CASE
                     WHEN t.status = 'SUCCESS'
-                    THEN 1
+                    THEN t.amount
                     ELSE 0
                 END
-            ) AS successful_transactions,
+            ),
+            0
+        ) AS successful_amount
 
-            SUM(
-                CASE
-                    WHEN t.status = 'FAILED'
-                    THEN 1
-                    ELSE 0
-                END
-            ) AS failed_transactions,
+    FROM transaction_upi tu
 
-            SUM(
-                CASE
-                    WHEN t.status IN (
-                        'PENDING',
-                        'CREATED',
-                        'AUTHORIZED'
-                    )
-                    THEN 1
-                    ELSE 0
-                END
-            ) AS pending_transactions,
+    INNER JOIN transactions t
+        ON t.transaction_id = tu.transaction_id
 
-            COALESCE(
-                SUM(
-                    CASE
-                        WHEN t.status = 'SUCCESS'
-                        THEN t.amount
-                        ELSE 0
-                    END
-                ),
-                0
-            ) AS successful_amount
+    WHERE
 
-        FROM transaction_upi tu
+        t.created_at >= ?
 
-        INNER JOIN transactions t
-            ON t.transaction_id = tu.transaction_id
+        AND t.created_at < ?
 
-        WHERE
+        AND (
+            ? IS NULL
+            OR t.merchant_id = ?
+        )
 
-            t.created_at >= ?
+    GROUP BYa
+        COALESCE(
+            tu.bank_name,
+            'UNKNOWN'
+        )
 
-            AND t.created_at < ?
+    ORDER BY
+        total_transactions DESC
 
-            AND (
-                ? IS NULL
-                OR t.merchant_id = ?
-            )
-
-        GROUP BY
-            COALESCE(
-                tu.payer_account_type,
-                'UNKNOWN'
-            )
-
-        ORDER BY
-            total_transactions DESC
-
-    `,
+`,
 
 
     // ==========================================================
