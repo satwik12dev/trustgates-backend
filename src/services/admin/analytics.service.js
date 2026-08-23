@@ -225,7 +225,10 @@ const getTransactionTrend = async ({
 // REVENUE TREND
 // ==========================================================
 
-const getRevenueTrend = async () => {
+const getRevenueTrend = async ({
+    startDate,
+    endDate
+} = {}) => {
 
     const connection =
         await db.getConnection();
@@ -237,29 +240,63 @@ const getRevenueTrend = async () => {
         ] = await connection.query(
 
             ANALYTICS_QUERIES
-                .GET_REVENUE_TREND
+                .GET_REVENUE_TREND,
+
+            [
+                startDate,
+                endDate
+            ]
 
         );
 
+        const dataMap = new Map(
+            rows.map(row => [
+                row.report_date,
+                row
+            ])
+        );
 
-        return rows.map(
-            (row) => ({
+        const result = [];
 
-                date:
-                    row.report_date,
+        const currentDate =
+            new Date(`${startDate}T00:00:00`);
+
+        const lastDate =
+            new Date(`${endDate}T00:00:00`);
+
+        while (currentDate <= lastDate) {
+
+            const date =
+                currentDate
+                    .toISOString()
+                    .split("T")[0];
+
+            const row =
+                dataMap.get(date);
+
+            result.push({
+
+                date,
 
                 successfulTransactions:
                     toNumber(
-                        row.successful_transactions
+                        row?.successful_transactions
                     ),
 
                 revenue:
                     toNumber(
-                        row.revenue
+                        row?.revenue
                     )
 
-            })
-        );
+            });
+
+            currentDate.setDate(
+                currentDate.getDate() + 1
+            );
+
+        }
+
+        return result;
 
     } finally {
 
