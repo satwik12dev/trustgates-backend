@@ -2,49 +2,30 @@ const {
     getDailySummary,
     getHourlyTransactions,
     getPaymentMethodDistribution,
-    getPaymentTypeDistribution,
-    getDailyTransactions,
-    getDailyTransactionsCount,
-    getExportTransactions
+    getPaymentTypeDistribution
+} = require("../../../utils/admin/reports/reportQueries");
+const { getExportTransactions } = require("../../../utils/admin/reports/reportQueries");
+const {
+    getDailyTransactions
 } = require("../../../utils/admin/reports/reportQueries");
 
-const {
-    exportCSV
-} = require("../../../utils/admin/reports/csvExport");
-
-const {
-    exportExcel
-} = require("../../../utils/admin/reports/excelExport");
-
-const {
-    exportPDF
-} = require("../../../utils/admin/reports/pdfExport");
-
+const { exportCSV } = require("../../../utils/admin/reports/csvExport");
+const { exportExcel } = require("../../../utils/admin/reports/excelExport");
+const { exportPDF } = require("../../../utils/admin/reports/pdfExport");
 
 /**
  * ============================================================
- * DAILY REPORT SERVICE
+ * DAILY REPORT
  * ============================================================
- *
- * GET /admin/reports/daily
- *
- * Returns:
- * - Summary
- * - Hourly chart
- * - Payment method chart
- * - Payment type chart
- * - Optional transactions for export
- *
- * IMPORTANT:
- * Normal dashboard request does NOT load all transactions.
- * Transactions are loaded only when includeTransactions=true.
  */
 
 const getDailyReportService = async (
-    filters,
-    includeTransactions = false
-) => {
 
+    filters,
+
+    includeTransactions = false
+
+) => {
     try {
 
         const {
@@ -55,100 +36,70 @@ const getDailyReportService = async (
             status
         } = filters;
 
-
         // =====================================================
-        // DAILY SUMMARY
-        // =====================================================
-
-        const summary =
-            await getDailySummary({
-
-                date,
-
-                merchantId,
-
-                paymentMethod,
-
-                paymentType,
-
-                status
-
-            });
-
-
-        // =====================================================
-        // HOURLY ANALYTICS
+        // Summary
         // =====================================================
 
-        const hourlyTransactions =
-            await getHourlyTransactions({
-
-                date,
-
-                merchantId
-
-            });
-
+        const summary = await getDailySummary({
+            date,
+            merchantId,
+            paymentMethod,
+            paymentType,
+            status
+        });
 
         // =====================================================
-        // PAYMENT METHOD DISTRIBUTION
+        // Hourly Analytics
+        // =====================================================
+
+        const hourlyTransactions = await getHourlyTransactions({
+            date,
+            merchantId
+        });
+
+        // =====================================================
+        // Payment Method Distribution
         // =====================================================
 
         const paymentMethodDistribution =
             await getPaymentMethodDistribution({
-
                 date,
-
                 merchantId
-
             });
 
-
         // =====================================================
-        // PAYMENT TYPE DISTRIBUTION
+        // Payment Type Distribution
         // =====================================================
 
         const paymentTypeDistribution =
             await getPaymentTypeDistribution({
-
                 date,
-
                 merchantId
-
             });
 
-
         // =====================================================
-        // SUMMARY NUMBERS
+        // Success Rate
         // =====================================================
 
         const totalTransactions =
-            Number(
-                summary.totalTransactions || 0
-            );
-
+            Number(summary.totalTransactions || 0);
 
         const successfulTransactions =
-            Number(
-                summary.successfulTransactions || 0
-            );
-
+            Number(summary.successfulTransactions || 0);
 
         const successRate =
             totalTransactions === 0
                 ? 0
                 : Number(
                     (
-                        (
-                            successfulTransactions /
-                            totalTransactions
-                        ) * 100
+                        (successfulTransactions /
+                            totalTransactions) *
+                        100
                     ).toFixed(2)
                 );
 
-
         // =====================================================
-        // DASHBOARD CARDS
+        // Dashboard Cards
         // =====================================================
 
         const dashboardCards = {
@@ -157,204 +108,129 @@ const getDailyReportService = async (
 
             successfulTransactions,
 
-            createdTransactions:
-                Number(
-                    summary.createdTransactions || 0
-                ),
-
             failedTransactions:
-                Number(
-                    summary.failedTransactions || 0
-                ),
+                Number(summary.failedTransactions || 0),
 
             pendingTransactions:
-                Number(
-                    summary.pendingTransactions || 0
-                ),
-
-            refundedTransactions:
-                Number(
-                    summary.refundedTransactions || 0
-                ),
+                Number(summary.pendingTransactions || 0),
 
             chargebackTransactions:
-                Number(
-                    summary.chargebackTransactions || 0
-                ),
+                Number(summary.chargebackTransactions || 0),
 
             totalRevenue:
-                Number(
-                    summary.totalRevenue || 0
-                ),
+                Number(summary.totalRevenue || 0),
 
             totalGatewayFee:
-                Number(
-                    summary.totalGatewayFee || 0
-                ),
+                Number(summary.totalGatewayFee || 0),
 
             averageTransactionAmount:
-                Number(
-                    summary.averageTransactionAmount || 0
-                ),
+                Number(summary.averageTransactionAmount || 0),
 
             successRate
 
         };
 
-
         // =====================================================
-        // HOURLY CHART
+        // Hourly Chart
         // =====================================================
 
         const hourlyChart = [];
 
+        for (let hour = 0; hour < 24; hour++) {
 
-        for (
-            let hour = 0;
-            hour < 24;
-            hour++
-        ) {
-
-            const transaction =
-                hourlyTransactions.find(
-                    item =>
-                        Number(item.hour) === hour
-                );
-
+            const transaction = hourlyTransactions.find(
+                item => Number(item.hour) === hour
+            );
 
             hourlyChart.push({
 
-                hour:
-                    `${hour}:00`,
+                hour: `${hour}:00`,
 
                 totalTransactions:
                     transaction
-                        ? Number(
-                            transaction.totalTransactions || 0
-                        )
+                        ? Number(transaction.totalTransactions)
                         : 0,
 
                 successfulTransactions:
                     transaction
-                        ? Number(
-                            transaction.successfulTransactions || 0
-                        )
+                        ? Number(transaction.successfulTransactions)
                         : 0,
 
                 totalAmount:
                     transaction
-                        ? Number(
-                            transaction.totalAmount || 0
-                        )
+                        ? Number(transaction.totalAmount)
                         : 0
 
             });
 
         }
 
-
         // =====================================================
-        // PAYMENT METHOD CHART
+        // Payment Method Chart
         // =====================================================
 
         const paymentMethodChart =
-            paymentMethodDistribution.map(
-                item => ({
+            paymentMethodDistribution.map(item => ({
 
-                    paymentMethod:
-                        item.payment_method,
+                paymentMethod: item.payment_method,
 
-                    totalTransactions:
-                        Number(
-                            item.totalTransactions || 0
-                        ),
+                totalTransactions:
+                    Number(item.totalTransactions),
 
-                    successfulTransactions:
-                        Number(
-                            item.successfulTransactions || 0
-                        ),
+                successfulTransactions:
+                    Number(item.successfulTransactions),
 
-                    totalAmount:
-                        Number(
-                            item.totalAmount || 0
-                        )
+                totalAmount:
+                    Number(item.totalAmount)
 
-                })
-            );
-
+            }));
 
         // =====================================================
-        // PAYMENT TYPE CHART
+        // Payment Type Chart
         // =====================================================
 
         const paymentTypeChart =
-            paymentTypeDistribution.map(
-                item => ({
+            paymentTypeDistribution.map(item => ({
 
-                    paymentType:
-                        item.payment_type,
+                paymentType: item.payment_type,
 
-                    totalTransactions:
-                        Number(
-                            item.totalTransactions || 0
-                        ),
+                totalTransactions:
+                    Number(item.totalTransactions),
 
-                    successfulTransactions:
-                        Number(
-                            item.successfulTransactions || 0
-                        ),
+                successfulTransactions:
+                    Number(item.successfulTransactions),
 
-                    totalAmount:
-                        Number(
-                            item.totalAmount || 0
-                        )
+                totalAmount:
+                    Number(item.totalAmount)
 
-                })
-            );
-
-
+            }));
         // =====================================================
-        // TRANSACTIONS
+        // EXPORT TRANSACTIONS
         // =====================================================
-        //
-        // Only used for export.
-        //
-        // Normal daily report:
-        // transactions = []
-        //
-        // Export:
-        // includeTransactions = true
-        //
 
         let transactions = [];
 
-
         if (includeTransactions) {
 
-            transactions =
-                await getExportTransactions({
+            transactions = await getExportTransactions({
 
-                    startDate:
-                        date,
+                startDate: date,
 
-                    endDate:
-                        date,
+                endDate: date,
 
-                    merchantId
+                merchantId
 
-                });
+            });
 
         }
 
-
         // =====================================================
-        // FINAL RESPONSE
+        // Final Response
         // =====================================================
 
         return {
 
-            summary:
-                dashboardCards,
+            summary: dashboardCards,
 
             charts: {
 
@@ -378,74 +254,41 @@ const getDailyReportService = async (
 
 };
 
-
 /**
  * ============================================================
- * DAILY TRANSACTIONS SERVICE
+ * DAILY TRANSACTIONS
  * ============================================================
- *
- * GET /admin/reports/daily/transactions
- *
- * Supports:
- * - Date
- * - Merchant
- * - Payment method
- * - Payment type
- * - Status
- * - Search
- * - Pagination
  */
 
-const getDailyTransactionsService = async (
-    filters
-) => {
+const getDailyTransactionsService = async (filters) => {
 
     try {
 
         const {
-
             date,
-
             merchantId,
-
             paymentMethod,
-
             paymentType,
-
             status,
-
             search,
-
             page = 1,
-
             limit = 20
-
         } = filters;
 
 
-        // =====================================================
-        // NORMALIZE PAGINATION
-        // =====================================================
-
         const currentPage =
-            Math.max(
-                Number(page) || 1,
-                1
-            );
+            Math.max(Number(page) || 1, 1);
 
 
         const currentLimit =
             Math.min(
-                Math.max(
-                    Number(limit) || 20,
-                    1
-                ),
+                Math.max(Number(limit) || 20, 1),
                 100
             );
 
 
         // =====================================================
-        // FETCH PAGINATED TRANSACTIONS
+        // GET PAGINATED TRANSACTIONS
         // =====================================================
 
         const transactions =
@@ -463,28 +306,16 @@ const getDailyTransactionsService = async (
 
                 search,
 
-                page:
-                    currentPage,
+                page: currentPage,
 
-                limit:
-                    currentLimit
+                limit: currentLimit
 
             });
 
 
         // =====================================================
-        // FETCH ACTUAL TOTAL COUNT
+        // GET ACTUAL TOTAL RECORDS
         // =====================================================
-        //
-        // IMPORTANT:
-        //
-        // Do NOT use:
-        //
-        // transactions.length
-        //
-        // because that only gives the number of
-        // records on the current page.
-        //
 
         const totalRecords =
             await getDailyTransactionsCount({
@@ -509,98 +340,75 @@ const getDailyTransactionsService = async (
         // =====================================================
 
         const formattedTransactions =
-            transactions.map(
-                transaction => ({
+            transactions.map(transaction => ({
 
-                    transactionId:
-                        transaction.transaction_id,
+                transactionId:
+                    transaction.transaction_id,
 
-                    orderId:
-                        transaction.order_id,
+                orderId:
+                    transaction.order_id,
 
-                    merchantName:
-                        transaction.merchant_name,
+                merchantName:
+                    transaction.merchant_name,
 
-                    businessName:
-                        transaction.business_name,
+                businessName:
+                    transaction.business_name,
 
-                    customerName:
-                        transaction.customer_name,
+                customerName:
+                    transaction.customer_name,
 
-                    customerEmail:
-                        transaction.customer_email,
+                customerEmail:
+                    transaction.customer_email,
 
-                    amount:
-                        Number(
-                            transaction.amount || 0
-                        ),
+                amount:
+                    Number(transaction.amount),
 
-                    gatewayFee:
-                        Number(
-                            transaction.gateway_fee || 0
-                        ),
+                gatewayFee:
+                    Number(transaction.gateway_fee || 0),
 
-                    currency:
-                        transaction.currency,
+                currency:
+                    transaction.currency,
 
-                    paymentMethod:
-                        transaction.payment_method,
+                paymentMethod:
+                    transaction.payment_method,
 
-                    paymentType:
-                        transaction.payment_type,
+                paymentType:
+                    transaction.payment_type,
 
-                    status:
-                        transaction.status,
+                status:
+                    transaction.status,
 
-                    createdAt:
-                        transaction.created_at
+                createdAt:
+                    transaction.created_at
 
-                })
-            );
+            }));
 
 
         // =====================================================
-        // PAGINATION CALCULATION
+        // PAGINATION
         // =====================================================
 
         const totalPages =
-            totalRecords === 0
-                ? 0
-                : Math.ceil(
-                    totalRecords /
-                    currentLimit
-                );
+            Math.ceil(
+                totalRecords / currentLimit
+            );
 
-
-        const hasNextPage =
-            currentPage < totalPages;
-
-
-        const hasPreviousPage =
-            currentPage > 1 &&
-            totalPages > 0;
-
-
-        // =====================================================
-        // FINAL RESPONSE
-        // =====================================================
 
         return {
 
-            page:
-                currentPage,
+            page: currentPage,
 
-            limit:
-                currentLimit,
+            limit: currentLimit,
 
-            totalRecords:
-                Number(totalRecords),
+            totalRecords,
 
             totalPages,
 
-            hasNextPage,
+            hasNextPage:
+                currentPage < totalPages,
 
-            hasPreviousPage,
+            hasPreviousPage:
+                currentPage > 1,
 
             transactions:
                 formattedTransactions
@@ -620,23 +428,13 @@ const getDailyTransactionsService = async (
  * ============================================================
  * SEARCH DAILY TRANSACTIONS
  * ============================================================
- *
- * GET /admin/reports/daily/search
- *
- * Search is handled by the same transaction query.
  */
 
-const searchDailyTransactionsService = async (
-    filters
-) => {
+const searchDailyTransactionsService = async (filters) => {
 
     try {
 
-        const result =
-            await getDailyTransactionsService(
-                filters
-            );
-
+        const result = await getDailyTransactionsService(filters);
 
         return result;
 
@@ -653,29 +451,13 @@ const searchDailyTransactionsService = async (
  * ============================================================
  * FILTER DAILY TRANSACTIONS
  * ============================================================
- *
- * GET /admin/reports/daily/filter
- *
- * Filters:
- * - Merchant
- * - Status
- * - Payment Method
- * - Payment Type
- * - Search
- * - Date
  */
 
-const filterDailyTransactionsService = async (
-    filters
-) => {
+const filterDailyTransactionsService = async (filters) => {
 
     try {
 
-        const result =
-            await getDailyTransactionsService(
-                filters
-            );
-
+        const result = await getDailyTransactionsService(filters);
 
         return result;
 
@@ -687,23 +469,12 @@ const filterDailyTransactionsService = async (
 
 };
 
-
 /**
  * ============================================================
- * EXPORT DAILY REPORT SERVICE
+ * EXPORT DAILY REPORT
  * ============================================================
- *
- * POST /admin/reports/daily/export
- *
- * Formats:
- * - CSV
- * - EXCEL
- * - PDF
  */
-
-const exportDailyReportService = async (
-    filters = {}
-) => {
+const exportDailyReportService = async (filters = {}) => {
 
     try {
 
@@ -717,313 +488,221 @@ const exportDailyReportService = async (
 
         } = filters;
 
-
-        // =====================================================
+        // ============================================
         // GET COMPLETE REPORT
-        // =====================================================
+        // ============================================
 
-        const report =
-            await getDailyReportService(
+        const report = await getDailyReportService(
 
-                {
+            {
 
-                    date,
+                date,
 
-                    merchantId
+                merchantId
 
-                },
+            },
 
-                true
+            true
 
-            );
+        );
 
-
-        // =====================================================
-        // NO TRANSACTIONS
-        // =====================================================
-
-        if (
-            !report.transactions ||
-            !report.transactions.length
-        ) {
+        if (!report.transactions.length) {
 
             return {
 
                 success: false,
 
-                message:
-                    "No transactions found."
+                message: "No transactions found."
 
             };
 
         }
 
-
-        // =====================================================
-        // EXPORT HEADERS
-        // =====================================================
-
         const headers = [
 
             {
 
-                id:
-                    "transaction_id",
+                id: "transaction_id",
 
-                title:
-                    "Transaction ID"
+                title: "Transaction ID"
 
             },
 
             {
 
-                id:
-                    "order_id",
+                id: "order_id",
 
-                title:
-                    "Order ID"
+                title: "Order ID"
 
             },
 
             {
 
-                id:
-                    "merchant_name",
+                id: "merchant_name",
 
-                title:
-                    "Merchant"
+                title: "Merchant"
 
             },
 
             {
 
-                id:
-                    "business_name",
+                id: "business_name",
 
-                title:
-                    "Business"
+                title: "Business"
 
             },
 
             {
 
-                id:
-                    "customer_name",
+                id: "customer_name",
 
-                title:
-                    "Customer"
+                title: "Customer"
 
             },
 
             {
 
-                id:
-                    "customer_email",
+                id: "customer_email",
 
-                title:
-                    "Customer Email"
+                title: "Customer Email"
 
             },
 
             {
 
-                id:
-                    "amount",
+                id: "amount",
 
-                title:
-                    "Amount"
+                title: "Amount"
 
             },
 
             {
 
-                id:
-                    "gateway_fee",
+                id: "gateway_fee",
 
-                title:
-                    "Gateway Fee"
+                title: "Gateway Fee"
 
             },
 
             {
 
-                id:
-                    "currency",
+                id: "currency",
 
-                title:
-                    "Currency"
+                title: "Currency"
 
             },
 
             {
 
-                id:
-                    "payment_method",
+                id: "payment_method",
 
-                title:
-                    "Payment Method"
+                title: "Payment Method"
 
             },
 
             {
 
-                id:
-                    "payment_type",
+                id: "payment_type",
 
-                title:
-                    "Payment Type"
+                title: "Payment Type"
 
             },
 
             {
 
-                id:
-                    "status",
+                id: "status",
 
-                title:
-                    "Status"
+                title: "Status"
 
             },
 
             {
 
-                id:
-                    "provider_payment_id",
+                id: "provider_payment_id",
 
-                title:
-                    "Gateway Payment ID"
+                title: "Gateway Payment ID"
 
             },
 
             {
 
-                id:
-                    "created_at",
+                id: "created_at",
 
-                title:
-                    "Created At"
+                title: "Created At"
 
             }
 
         ];
 
+        switch (format.toUpperCase()) {
 
-        // =====================================================
-        // VALIDATE FORMAT
-        // =====================================================
+            case "CSV":
 
-        const exportFormat =
-            String(format || "")
-                .toUpperCase();
+                return await exportCSV({
 
+                    fileName: "daily_report",
 
-        // =====================================================
-        // CSV
-        // =====================================================
+                    headers,
 
-        if (
-            exportFormat === "CSV"
-        ) {
+                    records: report.transactions
 
-            return await exportCSV({
+                });
 
-                fileName:
-                    "daily_report",
+            case "EXCEL":
 
-                headers,
+                return await exportExcel({
 
-                records:
-                    report.transactions
+                    fileName: "daily_report",
 
-            });
+                    sheetName: "Daily Report",
 
-        }
+                    columns: headers.map(h => ({
 
+                        header: h.title,
 
-        // =====================================================
-        // EXCEL
-        // =====================================================
+                        key: h.id
 
-        if (
-            exportFormat === "EXCEL"
-        ) {
+                    })),
 
-            return await exportExcel({
+                    records: report.transactions
 
-                fileName:
-                    "daily_report",
+                });
 
-                sheetName:
-                    "Daily Report",
+            case "PDF":
 
-                columns:
-                    headers.map(
-                        header => ({
+                return await exportPDF({
 
-                            header:
-                                header.title,
+                    fileName: "daily_report",
 
-                            key:
-                                header.id
+                    title: "Daily Transaction Report",
 
-                        })
-                    ),
+                    summary: report.summary,
 
-                records:
-                    report.transactions
+                    headers,
 
-            });
+                    records: report.transactions,
 
-        }
+                    filters: {
 
+                        date,
 
-        // =====================================================
-        // PDF
-        // =====================================================
+                        merchantId
 
-        if (
-            exportFormat === "PDF"
-        ) {
+                    },
 
-            return await exportPDF({
+                    generatedBy: "Admin"
 
-                fileName:
-                    "daily_report",
+                });
 
-                title:
-                    "Daily Transaction Report",
+            default:
 
-                summary:
-                    report.summary,
+                throw new Error(
 
-                headers,
+                    "Invalid export format."
 
-                records:
-                    report.transactions,
-
-                filters: {
-
-                    date,
-
-                    merchantId
-
-                },
-
-                generatedBy:
-                    "Admin"
-
-            });
+                );
 
         }
-
-
-        // =====================================================
-        // INVALID FORMAT
-        // =====================================================
-
-        throw new Error(
-            "Invalid export format."
-        );
 
     } catch (error) {
 
@@ -1032,8 +711,6 @@ const exportDailyReportService = async (
     }
 
 };
-
-
 /**
  * ============================================================
  * EXPORTS
