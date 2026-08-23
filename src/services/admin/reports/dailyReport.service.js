@@ -7,7 +7,7 @@ const {
 const { getExportTransactions } = require("../../../utils/admin/reports/reportQueries");
 const {
     getDailyTransactions
-} =require("../../../utils/admin/reports/reportQueries");
+} = require("../../../utils/admin/reports/reportQueries");
 
 const { exportCSV } = require("../../../utils/admin/reports/csvExport");
 const { exportExcel } = require("../../../utils/admin/reports/excelExport");
@@ -91,12 +91,12 @@ const getDailyReportService = async (
             totalTransactions === 0
                 ? 0
                 : Number(
-                      (
-                          (successfulTransactions /
-                              totalTransactions) *
-                          100
-                      ).toFixed(2)
-                  );
+                    (
+                        (successfulTransactions /
+                            totalTransactions) *
+                        100
+                    ).toFixed(2)
+                );
 
         // =====================================================
         // Dashboard Cards
@@ -151,6 +151,11 @@ const getDailyReportService = async (
                         ? Number(transaction.totalTransactions)
                         : 0,
 
+                successfulTransactions:
+                    transaction
+                        ? Number(transaction.successfulTransactions)
+                        : 0,
+
                 totalAmount:
                     transaction
                         ? Number(transaction.totalAmount)
@@ -172,6 +177,9 @@ const getDailyReportService = async (
                 totalTransactions:
                     Number(item.totalTransactions),
 
+                successfulTransactions:
+                    Number(item.successfulTransactions),
+
                 totalAmount:
                     Number(item.totalAmount)
 
@@ -189,29 +197,32 @@ const getDailyReportService = async (
                 totalTransactions:
                     Number(item.totalTransactions),
 
+                successfulTransactions:
+                    Number(item.successfulTransactions),
+
                 totalAmount:
                     Number(item.totalAmount)
 
             }));
-            // =====================================================
-// EXPORT TRANSACTIONS
-// =====================================================
+        // =====================================================
+        // EXPORT TRANSACTIONS
+        // =====================================================
 
-let transactions = [];
+        let transactions = [];
 
-if (includeTransactions) {
+        if (includeTransactions) {
 
-    transactions = await getExportTransactions({
+            transactions = await getExportTransactions({
 
-        startDate: date,
+                startDate: date,
 
-        endDate: date,
+                endDate: date,
 
-        merchantId
+                merchantId
 
-    });
+            });
 
-}
+        }
 
         // =====================================================
         // Final Response
@@ -219,21 +230,21 @@ if (includeTransactions) {
 
         return {
 
-    summary: dashboardCards,
+            summary: dashboardCards,
 
-    charts: {
+            charts: {
 
-        hourlyChart,
+                hourlyChart,
 
-        paymentMethodChart,
+                paymentMethodChart,
 
-        paymentTypeChart
+                paymentTypeChart
 
-    },
+            },
 
-    transactions
+            transactions
 
-};
+        };
 
     } catch (error) {
 
