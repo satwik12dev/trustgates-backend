@@ -206,13 +206,19 @@ const PAYLATER_QUERIES = Object.freeze({
             ) AS successful_amount,
 
             COALESCE(
-                AVG(
+                SUM(t.amount) -
+                SUM(
                     CASE
                         WHEN t.status = 'SUCCESS'
                         THEN t.amount
-                        ELSE NULL
+                        ELSE 0
                     END
                 ),
+                0
+            ) AS remaining_amount,
+
+            COALESCE(
+                AVG(t.amount),
                 0
             ) AS average_transaction_value,
 
