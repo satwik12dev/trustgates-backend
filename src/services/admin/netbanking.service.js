@@ -406,6 +406,10 @@ const getNetBankingSummary = async ({
                 Number(
                     row.successful_amount || 0
                 ),
+            refundedAmount:
+                Number(
+                    row.refunded_amount || 0
+                ),
 
             averageTransactionValue:
                 Number(
