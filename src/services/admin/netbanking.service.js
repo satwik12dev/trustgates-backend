@@ -579,12 +579,10 @@ const getNetBankBankAnalytics = async ({
                 endDate
             );
 
-
         const normalizedMerchantId =
             merchantId
                 ? Number(merchantId)
                 : null;
-
 
         const [
             rows
@@ -604,7 +602,6 @@ const getNetBankBankAnalytics = async ({
             ]
 
         );
-
 
         return rows.map(row => ({
 
@@ -631,9 +628,19 @@ const getNetBankBankAnalytics = async ({
                     row.pending_transactions || 0
                 ),
 
+            refundedTransactions:
+                Number(
+                    row.refunded_transactions || 0
+                ),
+
             successfulAmount:
                 Number(
                     row.successful_amount || 0
+                ),
+
+            refundedAmount:
+                Number(
+                    row.refunded_amount || 0
                 )
 
         }));
@@ -645,7 +652,6 @@ const getNetBankBankAnalytics = async ({
     }
 
 };
-
 
 // ==========================================================
 // ACCOUNT TYPE ANALYTICS
