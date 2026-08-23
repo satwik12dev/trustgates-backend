@@ -18,6 +18,7 @@ const UPI_QUERIES = Object.freeze({
             tu.rrn,
             tu.npci_transaction_id,
             tu.bank_reference,
+            tu.bank_name,
 
             tu.gateway_response_code,
             tu.gateway_response_message,
@@ -107,6 +108,8 @@ const UPI_QUERIES = Object.freeze({
                 OR tu.npci_transaction_id LIKE ?
 
                 OR tu.bank_reference LIKE ?
+
+                OR tu.bank_name LIKE ?
 
                 OR tu.gateway_response_code LIKE ?
 
@@ -261,6 +264,7 @@ const UPI_QUERIES = Object.freeze({
             tu.rrn,
             tu.npci_transaction_id,
             tu.bank_reference,
+            tu.bank_name,
 
             tu.gateway_response_code,
             tu.gateway_response_message,
@@ -314,138 +318,141 @@ const UPI_QUERIES = Object.freeze({
     // ==========================================================
 
     GET_UPI_ANALYTICS: `
-SELECT
 
-    DATE(t.created_at) AS report_date,
+        SELECT
 
-    COUNT(*) AS total_transactions,
+            DATE(t.created_at) AS report_date,
 
-    SUM(
-        CASE
-            WHEN t.status = 'SUCCESS'
-            THEN 1
-            ELSE 0
-        END
-    ) AS successful_transactions,
+            COUNT(*) AS total_transactions,
 
-    SUM(
-        CASE
-            WHEN t.status = 'FAILED'
-            THEN 1
-            ELSE 0
-        END
-    ) AS failed_transactions,
-
-    SUM(
-        CASE
-            WHEN t.status IN (
-                'PENDING',
-                'CREATED',
-                'AUTHORIZED'
-            )
-            THEN 1
-            ELSE 0
-        END
-    ) AS pending_transactions,
-
-    SUM(
-        CASE
-            WHEN t.status = 'REFUNDED'
-            THEN 1
-            ELSE 0
-        END
-    ) AS refunded_transactions,
-
-    COALESCE(
-        SUM(
-            CASE
-                WHEN t.status = 'SUCCESS'
-                THEN t.amount
-                ELSE 0
-            END
-        ),
-        0
-    ) AS successful_amount,
-
-    COALESCE(
-        SUM(t.amount),
-        0
-    ) AS total_amount,
-
-    COALESCE(
-        SUM(
-            CASE
-                WHEN t.status = 'SUCCESS'
-                THEN (
-                    SELECT COALESCE(
-                        SUM(r.amount),
-                        0
-                    )
-                    FROM transaction_refunds r
-                    WHERE
-                        r.transaction_id = t.transaction_id
-                        AND r.refund_status = 'PROCESSED'
-                )
-                ELSE 0
-            END
-        ),
-        0
-    ) AS refunded_amount,
-
-    (
-        COALESCE(
             SUM(
                 CASE
                     WHEN t.status = 'SUCCESS'
-                    THEN t.amount
+                    THEN 1
                     ELSE 0
                 END
-            ),
-            0
-        )
-        -
-        COALESCE(
+            ) AS successful_transactions,
+
             SUM(
                 CASE
-                    WHEN t.status = 'SUCCESS'
-                    THEN (
-                        SELECT COALESCE(
-                            SUM(r.amount),
-                            0
+                    WHEN t.status = 'FAILED'
+                    THEN 1
+                    ELSE 0
+                END
+            ) AS failed_transactions,
+
+            SUM(
+                CASE
+                    WHEN t.status IN (
+                        'PENDING',
+                        'CREATED',
+                        'AUTHORIZED'
+                    )
+                    THEN 1
+                    ELSE 0
+                END
+            ) AS pending_transactions,
+
+            SUM(
+                CASE
+                    WHEN t.status = 'REFUNDED'
+                    THEN 1
+                    ELSE 0
+                END
+            ) AS refunded_transactions,
+
+            COALESCE(
+                SUM(
+                    CASE
+                        WHEN t.status = 'SUCCESS'
+                        THEN t.amount
+                        ELSE 0
+                    END
+                ),
+                0
+            ) AS successful_amount,
+
+            COALESCE(
+                SUM(t.amount),
+                0
+            ) AS total_amount,
+
+            COALESCE(
+                SUM(
+                    CASE
+                        WHEN t.status = 'SUCCESS'
+                        THEN (
+                            SELECT COALESCE(
+                                SUM(r.amount),
+                                0
+                            )
+                            FROM transaction_refunds r
+                            WHERE
+                                r.transaction_id = t.transaction_id
+                                AND r.refund_status = 'PROCESSED'
                         )
-                        FROM transaction_refunds r
-                        WHERE
-                            r.transaction_id = t.transaction_id
-                            AND r.refund_status = 'PROCESSED'
-                    )
-                    ELSE 0
-                END
-            ),
-            0
-        )
-    ) AS net_revenue
+                        ELSE 0
+                    END
+                ),
+                0
+            ) AS refunded_amount,
 
-FROM transactions t
+            (
+                COALESCE(
+                    SUM(
+                        CASE
+                            WHEN t.status = 'SUCCESS'
+                            THEN t.amount
+                            ELSE 0
+                        END
+                    ),
+                    0
+                )
+                -
+                COALESCE(
+                    SUM(
+                        CASE
+                            WHEN t.status = 'SUCCESS'
+                            THEN (
+                                SELECT COALESCE(
+                                    SUM(r.amount),
+                                    0
+                                )
+                                FROM transaction_refunds r
+                                WHERE
+                                    r.transaction_id = t.transaction_id
+                                    AND r.refund_status = 'PROCESSED'
+                            )
+                            ELSE 0
+                        END
+                    ),
+                    0
+                )
+            ) AS net_revenue
 
-INNER JOIN transaction_upi tu
-    ON tu.transaction_id = t.transaction_id
+        FROM transactions t
 
-WHERE
-    (
-        ? IS NULL
-        OR t.merchant_id = ?
-    )
+        INNER JOIN transaction_upi tu
+            ON tu.transaction_id = t.transaction_id
 
-    AND t.created_at >= ?
+        WHERE
 
-    AND t.created_at < ?
+            (
+                ? IS NULL
+                OR t.merchant_id = ?
+            )
 
-GROUP BY
-    DATE(t.created_at)
+            AND t.created_at >= ?
 
-ORDER BY
-    report_date ASC;
-`,
+            AND t.created_at < ?
+
+        GROUP BY
+            DATE(t.created_at)
+
+        ORDER BY
+            report_date ASC
+
+    `,
 
 
     // ==========================================================
@@ -454,80 +461,80 @@ ORDER BY
 
     GET_UPI_BANK_ANALYTICS: `
 
-    SELECT
+        SELECT
 
-        COALESCE(
-            tu.bank_name,
-            'UNKNOWN'
-        ) AS bank,
+            COALESCE(
+                tu.bank_name,
+                'UNKNOWN'
+            ) AS bank,
 
-        COUNT(*) AS total_transactions,
+            COUNT(*) AS total_transactions,
 
-        SUM(
-            CASE
-                WHEN t.status = 'SUCCESS'
-                THEN 1
-                ELSE 0
-            END
-        ) AS successful_transactions,
-
-        SUM(
-            CASE
-                WHEN t.status = 'FAILED'
-                THEN 1
-                ELSE 0
-            END
-        ) AS failed_transactions,
-
-        SUM(
-            CASE
-                WHEN t.status IN (
-                    'PENDING',
-                    'CREATED',
-                    'AUTHORIZED'
-                )
-                THEN 1
-                ELSE 0
-            END
-        ) AS pending_transactions,
-
-        COALESCE(
             SUM(
                 CASE
                     WHEN t.status = 'SUCCESS'
-                    THEN t.amount
+                    THEN 1
                     ELSE 0
                 END
-            ),
-            0
-        ) AS successful_amount
+            ) AS successful_transactions,
 
-    FROM transaction_upi tu
+            SUM(
+                CASE
+                    WHEN t.status = 'FAILED'
+                    THEN 1
+                    ELSE 0
+                END
+            ) AS failed_transactions,
 
-    INNER JOIN transactions t
-        ON t.transaction_id = tu.transaction_id
+            SUM(
+                CASE
+                    WHEN t.status IN (
+                        'PENDING',
+                        'CREATED',
+                        'AUTHORIZED'
+                    )
+                    THEN 1
+                    ELSE 0
+                END
+            ) AS pending_transactions,
 
-    WHERE
+            COALESCE(
+                SUM(
+                    CASE
+                        WHEN t.status = 'SUCCESS'
+                        THEN t.amount
+                        ELSE 0
+                    END
+                ),
+                0
+            ) AS successful_amount
 
-        t.created_at >= ?
+        FROM transaction_upi tu
 
-        AND t.created_at < ?
+        INNER JOIN transactions t
+            ON t.transaction_id = tu.transaction_id
 
-        AND (
-            ? IS NULL
-            OR t.merchant_id = ?
-        )
+        WHERE
 
-    GROUP BY
-        COALESCE(
-            tu.bank_name,
-            'UNKNOWN'
-        )
+            t.created_at >= ?
 
-    ORDER BY
-        total_transactions DESC
+            AND t.created_at < ?
 
-`,
+            AND (
+                ? IS NULL
+                OR t.merchant_id = ?
+            )
+
+        GROUP BY
+            COALESCE(
+                tu.bank_name,
+                'UNKNOWN'
+            )
+
+        ORDER BY
+            total_transactions DESC
+
+    `,
 
 
     // ==========================================================
