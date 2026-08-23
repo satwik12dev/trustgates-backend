@@ -574,36 +574,48 @@ const getHourlyTransactions = async ({
 
         );
 
-        return rows.map(
-            (row) => ({
+        const dataMap = new Map(
+            rows.map(row => [
+                Number(row.transaction_hour),
+                row
+            ])
+        );
 
-                hour:
-                    Number(
-                        row.transaction_hour
-                    ),
+        const result = [];
+
+        for (let hour = 0; hour < 24; hour++) {
+
+            const row = dataMap.get(hour);
+
+            result.push({
+
+                hour,
 
                 totalTransactions:
                     Number(
-                        row.total_transactions || 0
+                        row?.total_transactions || 0
                     ),
 
                 successfulTransactions:
                     Number(
-                        row.successful_transactions || 0
+                        row?.successful_transactions || 0
                     ),
 
                 failedTransactions:
                     Number(
-                        row.failed_transactions || 0
+                        row?.failed_transactions || 0
                     ),
 
                 pendingTransactions:
                     Number(
-                        row.pending_transactions || 0
+                        row?.pending_transactions || 0
                     )
 
-            })
-        );
+            });
+
+        }
+
+        return result;
 
     } finally {
 
