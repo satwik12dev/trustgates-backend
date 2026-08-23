@@ -1,5 +1,85 @@
 const pool = require("../../../config/pool");
 
+
+/**
+ * ===========================================================
+ * TIMEZONE HELPERS
+ * ===========================================================
+ *
+ * Database:
+ * created_at is stored in UTC.
+ *
+ * Business timezone:
+ * Asia/Kolkata / IST (+05:30)
+ *
+ * Example:
+ *
+ * 2026-08-10 00:00:00 IST
+ * =
+ * 2026-08-09 18:30:00 UTC
+ *
+ * 2026-08-11 00:00:00 IST
+ * =
+ * 2026-08-10 18:30:00 UTC
+ *
+ * We keep DB timestamps in UTC and only convert
+ * report boundaries.
+ */
+
+
+/**
+ * Get complete IST day as UTC range
+ *
+ * @param {string} date YYYY-MM-DD
+ *
+ * @returns {
+ *   startUTC: string,
+ *   endUTC: string
+ * }
+ */
+const getISTDayRangeUTC = (date) => {
+
+    if (!date) {
+        throw new Error("Report date is required.");
+    }
+
+    const dateString =
+        typeof date === "string"
+            ? date.slice(0, 10)
+            : new Date(date)
+                .toISOString()
+                .slice(0, 10);
+
+    const startUTC = new Date(
+        `${dateString}T00:00:00+05:30`
+    );
+
+    if (isNaN(startUTC.getTime())) {
+        throw new Error("Invalid report date.");
+    }
+
+    const endUTC = new Date(
+        startUTC.getTime() + 24 * 60 * 60 * 1000
+    );
+
+    return {
+
+        startUTC:
+            startUTC
+                .toISOString()
+                .slice(0, 19)
+                .replace("T", " "),
+
+        endUTC:
+            endUTC
+                .toISOString()
+                .slice(0, 19)
+                .replace("T", " ")
+
+    };
+};
+
+
 /**
  * ===========================================================
  * DAILY SUMMARY
@@ -14,64 +94,137 @@ const getDailySummary = async ({
     status = null
 }) => {
 
+    const {
+        startUTC,
+        endUTC
+    } = getISTDayRangeUTC(date);
+
 
     let query = `
         SELECT
 
             COUNT(*) AS totalTransactions,
 
-            SUM(CASE WHEN t.status = 'SUCCESS' THEN 1 ELSE 0 END) AS successfulTransactions,
+            SUM(
+                CASE
+                    WHEN t.status = 'SUCCESS'
+                    THEN 1
+                    ELSE 0
+                END
+            ) AS successfulTransactions,
 
-            SUM(CASE WHEN t.status = 'FAILED' THEN 1 ELSE 0 END) AS failedTransactions,
+            SUM(
+                CASE
+                    WHEN t.status = 'FAILED'
+                    THEN 1
+                    ELSE 0
+                END
+            ) AS failedTransactions,
 
-            SUM(CASE WHEN t.status = 'PENDING' THEN 1 ELSE 0 END) AS pendingTransactions,
+            SUM(
+                CASE
+                    WHEN t.status = 'PENDING'
+                    THEN 1
+                    ELSE 0
+                END
+            ) AS pendingTransactions,
 
-            SUM(CASE WHEN t.status = 'CHARGEBACK' THEN 1 ELSE 0 END) AS chargebackTransactions,
+            SUM(
+                CASE
+                    WHEN t.status = 'CHARGEBACK'
+                    THEN 1
+                    ELSE 0
+                END
+            ) AS chargebackTransactions,
 
-            ROUND(IFNULL(SUM(CASE
-                WHEN t.status='SUCCESS'
-                THEN t.amount
-                ELSE 0
-            END),0),2) AS totalRevenue,
+            ROUND(
+                IFNULL(
+                    SUM(
+                        CASE
+                            WHEN t.status = 'SUCCESS'
+                            THEN t.amount
+                            ELSE 0
+                        END
+                    ),
+                    0
+                ),
+                2
+            ) AS totalRevenue,
 
-            ROUND(IFNULL(SUM(t.gateway_fee),0),2) AS totalGatewayFee,
+            ROUND(
+                IFNULL(
+                    SUM(t.gateway_fee),
+                    0
+                ),
+                2
+            ) AS totalGatewayFee,
 
-            ROUND(IFNULL(AVG(t.amount),0),2) AS averageTransactionAmount
+            ROUND(
+                IFNULL(
+                    AVG(t.amount),
+                    0
+                ),
+                2
+            ) AS averageTransactionAmount
 
         FROM transactions t
 
-        WHERE DATE(t.created_at)=?
+        WHERE t.created_at >= ?
+        AND t.created_at < ?
     `;
 
-    const formattedDate = new Date(date)
-        .toISOString()
-        .split("T")[0];
 
-    const params = [formattedDate];
- // 2026-07-18
+    const params = [
+        startUTC,
+        endUTC
+    ];
+
+
     if (merchantId) {
+
         query += " AND t.merchant_id=?";
+
         params.push(merchantId);
+
     }
+
 
     if (paymentType) {
+
         query += " AND t.payment_type=?";
+
         params.push(paymentType);
+
     }
+
 
     if (paymentMethod) {
+
         query += " AND t.payment_method=?";
+
         params.push(paymentMethod);
+
     }
+
 
     if (status) {
+
         query += " AND t.status=?";
+
         params.push(status);
+
     }
 
-    const [rows] = await pool.query(query, params);
+
+    const [rows] =
+        await pool.query(
+            query,
+            params
+        );
+
 
     return rows[0];
+
 };
 
 
@@ -80,14 +233,28 @@ const getDailySummary = async ({
  * HOURLY TRANSACTIONS
  * ===========================================================
  */
+
 const getHourlyTransactions = async ({
     date,
     merchantId = null
 }) => {
 
+    const {
+        startUTC,
+        endUTC
+    } = getISTDayRangeUTC(date);
+
+
     let query = `
         SELECT
-            HOUR(created_at) AS hour,
+
+            HOUR(
+                CONVERT_TZ(
+                    created_at,
+                    '+00:00',
+                    '+05:30'
+                )
+            ) AS hour,
 
             COUNT(*) AS totalTransactions,
 
@@ -115,29 +282,51 @@ const getHourlyTransactions = async ({
 
         FROM transactions
 
-        WHERE DATE(created_at)=?
+        WHERE created_at >= ?
+        AND created_at < ?
     `;
 
-    const formattedDate =
-        typeof date === "string"
-            ? date
-            : date.toISOString().slice(0, 10);
 
-    const params = [formattedDate];
+    const params = [
+        startUTC,
+        endUTC
+    ];
+
 
     if (merchantId) {
+
         query += " AND merchant_id=?";
+
         params.push(merchantId);
+
     }
 
+
     query += `
-        GROUP BY HOUR(created_at)
-        ORDER BY HOUR(created_at)
+
+        GROUP BY
+            HOUR(
+                CONVERT_TZ(
+                    created_at,
+                    '+00:00',
+                    '+05:30'
+                )
+            )
+
+        ORDER BY hour
+
     `;
 
-    const [rows] = await pool.query(query, params);
+
+    const [rows] =
+        await pool.query(
+            query,
+            params
+        );
+
 
     return rows;
+
 };
 
 
@@ -157,7 +346,16 @@ const getDailyTransactions = async ({
     limit = 20
 }) => {
 
-    const offset = (page - 1) * limit;
+    const offset =
+        (Number(page) - 1) *
+        Number(limit);
+
+
+    const {
+        startUTC,
+        endUTC
+    } = getISTDayRangeUTC(date);
+
 
     let query = `
 
@@ -192,55 +390,64 @@ const getDailyTransactions = async ({
         FROM transactions t
 
         INNER JOIN merchants m
+            ON t.merchant_id = m.merchant_id
 
-        ON t.merchant_id = m.merchant_id
-
-        WHERE DATE(t.created_at)=?
+        WHERE t.created_at >= ?
+        AND t.created_at < ?
 
     `;
-    const formattedDate =
-        typeof date === "string"
-            ? date
-            : date.toISOString().slice(0, 10);
 
-    const params = [formattedDate];
+
+    const params = [
+        startUTC,
+        endUTC
+    ];
 
 
     if (merchantId) {
 
-        query += " AND t.merchant_id=?";
+        query +=
+            " AND t.merchant_id=?";
 
         params.push(merchantId);
 
     }
 
+
     if (paymentMethod) {
 
-        query += " AND t.payment_method=?";
+        query +=
+            " AND t.payment_method=?";
 
         params.push(paymentMethod);
 
     }
 
+
     if (paymentType) {
 
-        query += " AND t.payment_type=?";
+        query +=
+            " AND t.payment_type=?";
 
         params.push(paymentType);
 
     }
 
+
     if (status) {
 
-        query += " AND t.status=?";
+        query +=
+            " AND t.status=?";
 
         params.push(status);
 
     }
 
+
     query += `
 
-        ORDER BY t.created_at DESC
+        ORDER BY
+            t.created_at DESC
 
         LIMIT ?
 
@@ -248,13 +455,22 @@ const getDailyTransactions = async ({
 
     `;
 
-    params.push(Number(limit));
 
-    params.push(Number(offset));
+    params.push(
+        Number(limit),
+        Number(offset)
+    );
 
-    const [rows] = await pool.query(query, params);
+
+    const [rows] =
+        await pool.query(
+            query,
+            params
+        );
+
 
     return rows;
+
 };
 
 
@@ -269,7 +485,14 @@ const getPaymentMethodDistribution = async ({
     merchantId = null
 }) => {
 
+    const {
+        startUTC,
+        endUTC
+    } = getISTDayRangeUTC(date);
+
+
     let query = `
+
         SELECT
 
             payment_method,
@@ -300,29 +523,46 @@ const getPaymentMethodDistribution = async ({
 
         FROM transactions
 
-        WHERE DATE(created_at)=?
+        WHERE created_at >= ?
+        AND created_at < ?
+
     `;
 
-    const formattedDate =
-        typeof date === "string"
-            ? date
-            : date.toISOString().slice(0, 10);
 
-    const params = [formattedDate];
+    const params = [
+        startUTC,
+        endUTC
+    ];
+
 
     if (merchantId) {
-        query += " AND merchant_id=?";
+
+        query +=
+            " AND merchant_id=?";
+
         params.push(merchantId);
+
     }
 
+
     query += `
+
         GROUP BY payment_method
+
         ORDER BY totalTransactions DESC
+
     `;
 
-    const [rows] = await pool.query(query, params);
+
+    const [rows] =
+        await pool.query(
+            query,
+            params
+        );
+
 
     return rows;
+
 };
 
 
@@ -337,7 +577,14 @@ const getPaymentTypeDistribution = async ({
     merchantId = null
 }) => {
 
+    const {
+        startUTC,
+        endUTC
+    } = getISTDayRangeUTC(date);
+
+
     let query = `
+
         SELECT
 
             payment_type,
@@ -368,30 +615,49 @@ const getPaymentTypeDistribution = async ({
 
         FROM transactions
 
-        WHERE DATE(created_at)=?
+        WHERE created_at >= ?
+        AND created_at < ?
+
     `;
 
-    const formattedDate =
-        typeof date === "string"
-            ? date
-            : date.toISOString().slice(0, 10);
 
-    const params = [formattedDate];
+    const params = [
+        startUTC,
+        endUTC
+    ];
+
 
     if (merchantId) {
-        query += " AND merchant_id=?";
+
+        query +=
+            " AND merchant_id=?";
+
         params.push(merchantId);
+
     }
 
+
     query += `
+
         GROUP BY payment_type
+
         ORDER BY totalTransactions DESC
+
     `;
 
-    const [rows] = await pool.query(query, params);
+
+    const [rows] =
+        await pool.query(
+            query,
+            params
+        );
+
 
     return rows;
+
 };
+
+
 /**
  * ===========================================================
  * MONTHLY SUMMARY
@@ -412,23 +678,67 @@ const getMonthlySummary = async ({
 
             COUNT(*) AS totalTransactions,
 
-            SUM(CASE WHEN status='SUCCESS' THEN 1 ELSE 0 END) AS successfulTransactions,
+            SUM(
+                CASE
+                    WHEN status='SUCCESS'
+                    THEN 1
+                    ELSE 0
+                END
+            ) AS successfulTransactions,
 
-            SUM(CASE WHEN status='FAILED' THEN 1 ELSE 0 END) AS failedTransactions,
+            SUM(
+                CASE
+                    WHEN status='FAILED'
+                    THEN 1
+                    ELSE 0
+                END
+            ) AS failedTransactions,
 
-            SUM(CASE WHEN status='PENDING' THEN 1 ELSE 0 END) AS pendingTransactions,
+            SUM(
+                CASE
+                    WHEN status='PENDING'
+                    THEN 1
+                    ELSE 0
+                END
+            ) AS pendingTransactions,
 
-            SUM(CASE WHEN status='CHARGEBACK' THEN 1 ELSE 0 END) AS chargebackTransactions,
+            SUM(
+                CASE
+                    WHEN status='CHARGEBACK'
+                    THEN 1
+                    ELSE 0
+                END
+            ) AS chargebackTransactions,
 
-            ROUND(IFNULL(SUM(CASE
-                WHEN status='SUCCESS'
-                THEN amount
-                ELSE 0
-            END),0),2) AS totalRevenue,
+            ROUND(
+                IFNULL(
+                    SUM(
+                        CASE
+                            WHEN status='SUCCESS'
+                            THEN amount
+                            ELSE 0
+                        END
+                    ),
+                    0
+                ),
+                2
+            ) AS totalRevenue,
 
-            ROUND(IFNULL(SUM(gateway_fee),0),2) AS totalGatewayFee,
+            ROUND(
+                IFNULL(
+                    SUM(gateway_fee),
+                    0
+                ),
+                2
+            ) AS totalGatewayFee,
 
-            ROUND(IFNULL(AVG(amount),0),2) AS averageTransactionAmount
+            ROUND(
+                IFNULL(
+                    AVG(amount),
+                    0
+                ),
+                2
+            ) AS averageTransactionAmount
 
         FROM transactions
 
@@ -438,24 +748,49 @@ const getMonthlySummary = async ({
 
     `;
 
-    const params = [month, year];
+
+    const params = [
+        month,
+        year
+    ];
+
 
     if (merchantId) {
-        query += " AND merchant_id=?";
+
+        query +=
+            " AND merchant_id=?";
+
         params.push(merchantId);
+
     }
+
 
     if (paymentType) {
-        query += " AND payment_type=?";
+
+        query +=
+            " AND payment_type=?";
+
         params.push(paymentType);
+
     }
+
 
     if (paymentMethod) {
-        query += " AND payment_method=?";
+
+        query +=
+            " AND payment_method=?";
+
         params.push(paymentMethod);
+
     }
 
-    const [rows] = await pool.query(query, params);
+
+    const [rows] =
+        await pool.query(
+            query,
+            params
+        );
+
 
     return rows[0];
 
@@ -480,7 +815,13 @@ const getMonthlyRevenueTrend = async ({
 
             DAY(created_at) AS day,
 
-            ROUND(IFNULL(SUM(amount),0),2) AS revenue,
+            ROUND(
+                IFNULL(
+                    SUM(amount),
+                    0
+                ),
+                2
+            ) AS revenue,
 
             COUNT(*) AS totalTransactions
 
@@ -494,15 +835,22 @@ const getMonthlyRevenueTrend = async ({
 
     `;
 
-    const params = [month, year];
+
+    const params = [
+        month,
+        year
+    ];
+
 
     if (merchantId) {
 
-        query += " AND merchant_id=?";
+        query +=
+            " AND merchant_id=?";
 
         params.push(merchantId);
 
     }
+
 
     query += `
 
@@ -512,7 +860,13 @@ const getMonthlyRevenueTrend = async ({
 
     `;
 
-    const [rows] = await pool.query(query, params);
+
+    const [rows] =
+        await pool.query(
+            query,
+            params
+        );
+
 
     return rows;
 
@@ -539,11 +893,29 @@ const getMonthlyTransactionTrend = async ({
 
             COUNT(*) AS totalTransactions,
 
-            SUM(CASE WHEN status='SUCCESS' THEN 1 ELSE 0 END) AS successful,
+            SUM(
+                CASE
+                    WHEN status='SUCCESS'
+                    THEN 1
+                    ELSE 0
+                END
+            ) AS successful,
 
-            SUM(CASE WHEN status='FAILED' THEN 1 ELSE 0 END) AS failed,
+            SUM(
+                CASE
+                    WHEN status='FAILED'
+                    THEN 1
+                    ELSE 0
+                END
+            ) AS failed,
 
-            SUM(CASE WHEN status='PENDING' THEN 1 ELSE 0 END) AS pending
+            SUM(
+                CASE
+                    WHEN status='PENDING'
+                    THEN 1
+                    ELSE 0
+                END
+            ) AS pending
 
         FROM transactions
 
@@ -553,15 +925,22 @@ const getMonthlyTransactionTrend = async ({
 
     `;
 
-    const params = [month, year];
+
+    const params = [
+        month,
+        year
+    ];
+
 
     if (merchantId) {
 
-        query += " AND merchant_id=?";
+        query +=
+            " AND merchant_id=?";
 
         params.push(merchantId);
 
     }
+
 
     query += `
 
@@ -571,7 +950,13 @@ const getMonthlyTransactionTrend = async ({
 
     `;
 
-    const [rows] = await pool.query(query, params);
+
+    const [rows] =
+        await pool.query(
+            query,
+            params
+        );
+
 
     return rows;
 
@@ -598,7 +983,13 @@ const getMonthlyRefundTrend = async ({
 
             COUNT(*) AS totalRefunds,
 
-            ROUND(IFNULL(SUM(refund_amount),0),2) AS refundAmount
+            ROUND(
+                IFNULL(
+                    SUM(refund_amount),
+                    0
+                ),
+                2
+            ) AS refundAmount
 
         FROM transaction_refunds
 
@@ -608,15 +999,22 @@ const getMonthlyRefundTrend = async ({
 
     `;
 
-    const params = [month, year];
+
+    const params = [
+        month,
+        year
+    ];
+
 
     if (merchantId) {
 
-        query += " AND merchant_id=?";
+        query +=
+            " AND merchant_id=?";
 
         params.push(merchantId);
 
     }
+
 
     query += `
 
@@ -626,7 +1024,13 @@ const getMonthlyRefundTrend = async ({
 
     `;
 
-    const [rows] = await pool.query(query, params);
+
+    const [rows] =
+        await pool.query(
+            query,
+            params
+        );
+
 
     return rows;
 
@@ -645,62 +1049,82 @@ const getTopMerchants = async ({
     limit = 10
 }) => {
 
-    const [rows] = await pool.query(
+    const [rows] =
+        await pool.query(
 
-        `
+            `
 
-        SELECT
+            SELECT
 
-            m.merchant_id,
+                m.merchant_id,
 
-            m.merchant_name,
+                m.merchant_name,
 
-            m.business_name,
+                m.business_name,
 
-            m.merchant_code,
+                m.merchant_code,
 
-            COUNT(t.transaction_id) AS totalTransactions,
+                COUNT(
+                    t.transaction_id
+                ) AS totalTransactions,
 
-            ROUND(IFNULL(SUM(
-                CASE
-                    WHEN t.status='SUCCESS'
-                    THEN t.amount
-                    ELSE 0
-                END
-            ),0),2) AS revenue,
+                ROUND(
+                    IFNULL(
+                        SUM(
+                            CASE
+                                WHEN t.status='SUCCESS'
+                                THEN t.amount
+                                ELSE 0
+                            END
+                        ),
+                        0
+                    ),
+                    2
+                ) AS revenue,
 
-            ROUND(IFNULL(SUM(t.gateway_fee),0),2) AS gatewayFee
+                ROUND(
+                    IFNULL(
+                        SUM(t.gateway_fee),
+                        0
+                    ),
+                    2
+                ) AS gatewayFee
 
-        FROM merchants m
+            FROM merchants m
 
-        INNER JOIN transactions t
+            INNER JOIN transactions t
+                ON m.merchant_id=t.merchant_id
 
-        ON m.merchant_id=t.merchant_id
+            WHERE MONTH(t.created_at)=?
 
-        WHERE MONTH(t.created_at)=?
+            AND YEAR(t.created_at)=?
 
-        AND YEAR(t.created_at)=?
+            GROUP BY
 
-        GROUP BY
+                m.merchant_id,
+                m.merchant_name,
+                m.business_name,
+                m.merchant_code
 
-            m.merchant_id,
-            m.merchant_name,
-            m.business_name,
-            m.merchant_code
+            ORDER BY revenue DESC
 
-        ORDER BY revenue DESC
+            LIMIT ?
 
-        LIMIT ?
+            `,
 
-        `,
+            [
+                month,
+                year,
+                Number(limit)
+            ]
 
-        [month, year, Number(limit)]
+        );
 
-    );
 
     return rows;
 
 };
+
 
 /**
  * ===========================================================
@@ -713,111 +1137,176 @@ const getMerchantSummary = async ({
     endDate,
     merchantId
 }) => {
+
     const formattedStartDate =
-    startDate instanceof Date
-        ? startDate.toISOString().split("T")[0]
-        : startDate;
-
-const formattedEndDate =
-    endDate instanceof Date
-        ? endDate.toISOString().split("T")[0]
-        : endDate;
-
-    const [rows] = await pool.query(
-
-        `
-        SELECT
-
-            m.merchant_id,
-            m.merchant_name,
-            m.business_name,
-            m.email,
-            m.phone,
-            m.website,
-            m.merchant_code,
-            m.account_status,
-            m.kyc_status,
-
-            COUNT(t.transaction_id) AS totalTransactions,
-
-            SUM(CASE
-                WHEN t.status='SUCCESS'
-                THEN 1 ELSE 0
-            END) AS successfulTransactions,
-
-            SUM(CASE
-                WHEN t.status='FAILED'
-                THEN 1 ELSE 0
-            END) AS failedTransactions,
-
-            SUM(CASE
-                WHEN t.status='PENDING'
-                THEN 1 ELSE 0
-            END) AS pendingTransactions,
-
-            ROUND(IFNULL(SUM(
-                CASE
-                    WHEN t.status='SUCCESS'
-                    THEN t.amount
-                    ELSE 0
-                END
-            ),0),2) AS totalRevenue,
-
-            ROUND(IFNULL(SUM(t.gateway_fee),0),2) AS totalGatewayFee,
-
-            ROUND(IFNULL(AVG(t.amount),0),2) AS averageTransactionAmount
-
-        FROM merchants m
+        startDate instanceof Date
+            ? startDate
+                .toISOString()
+                .split("T")[0]
+            : startDate;
 
 
-LEFT JOIN transactions t
-    ON m.merchant_id = t.merchant_id
-    AND DATE(t.created_at) BETWEEN ? AND ?
+    const formattedEndDate =
+        endDate instanceof Date
+            ? endDate
+                .toISOString()
+                .split("T")[0]
+            : endDate;
 
-WHERE m.merchant_id = ?
 
-GROUP BY
-    m.merchant_id,
-    m.merchant_name,
-    m.business_name,
-    m.email,
-    m.phone,
-    m.website,
-    m.merchant_code,
-    m.account_status,
-    m.kyc_status
+    const [rows] =
+        await pool.query(
 
-        `,
+            `
 
-        [
-    formattedStartDate,
-    formattedEndDate,
-    merchantId
-]
+            SELECT
 
-    );
+                m.merchant_id,
 
-return rows[0] || {
-    merchant_id: merchantId,
-    merchant_name: "",
-    business_name: "",
-    email: "",
-    phone: "",
-    website: "",
-    merchant_code: "",
-    account_status: "",
-    kyc_status: "",
-    totalTransactions: 0,
-    successfulTransactions: 0,
-    failedTransactions: 0,
-    pendingTransactions: 0,
-    totalRevenue: 0,
-    totalGatewayFee: 0,
-    averageTransactionAmount: 0
+                m.merchant_name,
+
+                m.business_name,
+
+                m.email,
+
+                m.phone,
+
+                m.website,
+
+                m.merchant_code,
+
+                m.account_status,
+
+                m.kyc_status,
+
+                COUNT(
+                    t.transaction_id
+                ) AS totalTransactions,
+
+                SUM(
+                    CASE
+                        WHEN t.status='SUCCESS'
+                        THEN 1
+                        ELSE 0
+                    END
+                ) AS successfulTransactions,
+
+                SUM(
+                    CASE
+                        WHEN t.status='FAILED'
+                        THEN 1
+                        ELSE 0
+                    END
+                ) AS failedTransactions,
+
+                SUM(
+                    CASE
+                        WHEN t.status='PENDING'
+                        THEN 1
+                        ELSE 0
+                    END
+                ) AS pendingTransactions,
+
+                ROUND(
+                    IFNULL(
+                        SUM(
+                            CASE
+                                WHEN t.status='SUCCESS'
+                                THEN t.amount
+                                ELSE 0
+                            END
+                        ),
+                        0
+                    ),
+                    2
+                ) AS totalRevenue,
+
+                ROUND(
+                    IFNULL(
+                        SUM(t.gateway_fee),
+                        0
+                    ),
+                    2
+                ) AS totalGatewayFee,
+
+                ROUND(
+                    IFNULL(
+                        AVG(t.amount),
+                        0
+                    ),
+                    2
+                ) AS averageTransactionAmount
+
+            FROM merchants m
+
+            LEFT JOIN transactions t
+                ON m.merchant_id = t.merchant_id
+
+                AND DATE(t.created_at)
+                    BETWEEN ? AND ?
+
+            WHERE m.merchant_id = ?
+
+            GROUP BY
+
+                m.merchant_id,
+                m.merchant_name,
+                m.business_name,
+                m.email,
+                m.phone,
+                m.website,
+                m.merchant_code,
+                m.account_status,
+                m.kyc_status
+
+            `,
+
+            [
+                formattedStartDate,
+                formattedEndDate,
+                merchantId
+            ]
+
+        );
+
+
+    return rows[0] || {
+
+        merchant_id: merchantId,
+
+        merchant_name: "",
+
+        business_name: "",
+
+        email: "",
+
+        phone: "",
+
+        website: "",
+
+        merchant_code: "",
+
+        account_status: "",
+
+        kyc_status: "",
+
+        totalTransactions: 0,
+
+        successfulTransactions: 0,
+
+        failedTransactions: 0,
+
+        pendingTransactions: 0,
+
+        totalRevenue: 0,
+
+        totalGatewayFee: 0,
+
+        averageTransactionAmount: 0
+
+    };
+
 };
-
-};
-
 
 
 /**
@@ -832,50 +1321,65 @@ const getMerchantRevenueTrend = async ({
     endDate
 }) => {
 
-    const [rows] = await pool.query(
+    const [rows] =
+        await pool.query(
 
-        `
-        SELECT
+            `
 
-            DATE(created_at) AS reportDate,
+            SELECT
 
-            COUNT(*) AS totalTransactions,
+                DATE(created_at)
+                    AS reportDate,
 
-            ROUND(IFNULL(SUM(
-                CASE
-                    WHEN status='SUCCESS'
-                    THEN amount
-                    ELSE 0
-                END
-            ),0),2) AS revenue,
+                COUNT(*) AS totalTransactions,
 
-            ROUND(IFNULL(SUM(gateway_fee),0),2) AS gatewayFee
+                ROUND(
+                    IFNULL(
+                        SUM(
+                            CASE
+                                WHEN status='SUCCESS'
+                                THEN amount
+                                ELSE 0
+                            END
+                        ),
+                        0
+                    ),
+                    2
+                ) AS revenue,
 
-        FROM transactions
+                ROUND(
+                    IFNULL(
+                        SUM(gateway_fee),
+                        0
+                    ),
+                    2
+                ) AS gatewayFee
 
-        WHERE merchant_id=?
+            FROM transactions
 
-        AND DATE(created_at)
-            BETWEEN ? AND ?
+            WHERE merchant_id=?
 
-        GROUP BY DATE(created_at)
+            AND DATE(created_at)
+                BETWEEN ? AND ?
 
-        ORDER BY DATE(created_at)
+            GROUP BY DATE(created_at)
 
-        `,
+            ORDER BY DATE(created_at)
 
-        [
-            merchantId,
-            startDate,
-            endDate
-        ]
+            `,
 
-    );
+            [
+                merchantId,
+                startDate,
+                endDate
+            ]
+
+        );
+
 
     return rows;
 
 };
-
 
 
 /**
@@ -890,44 +1394,58 @@ const getMerchantPaymentMethods = async ({
     endDate
 }) => {
 
-    const [rows] = await pool.query(
+    const [rows] =
+        await pool.query(
 
-        `
-        SELECT
+            `
 
-            payment_method,
+            SELECT
 
-            COUNT(*) AS totalTransactions,
+                payment_method,
 
-            ROUND(IFNULL(SUM(amount),0),2) AS totalAmount,
+                COUNT(*) AS totalTransactions,
 
-            ROUND(IFNULL(SUM(gateway_fee),0),2) AS gatewayFee
+                ROUND(
+                    IFNULL(
+                        SUM(amount),
+                        0
+                    ),
+                    2
+                ) AS totalAmount,
 
-        FROM transactions
+                ROUND(
+                    IFNULL(
+                        SUM(gateway_fee),
+                        0
+                    ),
+                    2
+                ) AS gatewayFee
 
-        WHERE merchant_id=?
+            FROM transactions
 
-        AND DATE(created_at)
-            BETWEEN ? AND ?
+            WHERE merchant_id=?
 
-        GROUP BY payment_method
+            AND DATE(created_at)
+                BETWEEN ? AND ?
 
-        ORDER BY totalTransactions DESC
+            GROUP BY payment_method
 
-        `,
+            ORDER BY totalTransactions DESC
 
-        [
-            merchantId,
-            startDate,
-            endDate
-        ]
+            `,
 
-    );
+            [
+                merchantId,
+                startDate,
+                endDate
+            ]
+
+        );
+
 
     return rows;
 
 };
-
 
 
 /**
@@ -942,50 +1460,66 @@ const getMerchantRecentTransactions = async ({
     limit = 20
 }) => {
 
-    const offset = (page - 1) * limit;
+    const offset =
+        (Number(page) - 1) *
+        Number(limit);
 
-    const [rows] = await pool.query(
 
-        `
-        SELECT
+    const [rows] =
+        await pool.query(
 
-            transaction_id,
-            order_id,
-            provider_payment_id,
-            customer_name,
-            customer_email,
-            amount,
-            gateway_fee,
-            currency,
-            payment_method,
-            payment_type,
-            status,
-            created_at
+            `
 
-        FROM transactions
+            SELECT
 
-        WHERE merchant_id=?
+                transaction_id,
 
-        ORDER BY created_at DESC
+                order_id,
 
-        LIMIT ?
+                provider_payment_id,
 
-        OFFSET ?
+                customer_name,
 
-        `,
+                customer_email,
 
-        [
-            merchantId,
-            Number(limit),
-            Number(offset)
-        ]
+                amount,
 
-    );
+                gateway_fee,
+
+                currency,
+
+                payment_method,
+
+                payment_type,
+
+                status,
+
+                created_at
+
+            FROM transactions
+
+            WHERE merchant_id=?
+
+            ORDER BY created_at DESC
+
+            LIMIT ?
+
+            OFFSET ?
+
+            `,
+
+            [
+                merchantId,
+                Number(limit),
+                Number(offset)
+            ]
+
+        );
+
 
     return rows;
 
 };
-
 
 
 /**
@@ -999,71 +1533,122 @@ const getMerchantSettlementSummary = async ({
     startDate,
     endDate
 }) => {
+
     const formattedStartDate =
-    startDate instanceof Date
-        ? startDate.toISOString().split("T")[0]
-        : startDate;
+        startDate instanceof Date
+            ? startDate
+                .toISOString()
+                .split("T")[0]
+            : startDate;
 
-const formattedEndDate =
-    endDate instanceof Date
-        ? endDate.toISOString().split("T")[0]
-        : endDate;
-    const [rows] = await pool.query(
 
-    `
-    SELECT
+    const formattedEndDate =
+        endDate instanceof Date
+            ? endDate
+                .toISOString()
+                .split("T")[0]
+            : endDate;
 
-        COUNT(*) AS totalSettlements,
 
-        ROUND(IFNULL(SUM(gross_amount),0),2) AS grossAmount,
+    const [rows] =
+        await pool.query(
 
-        ROUND(IFNULL(SUM(gateway_fee),0),2) AS gatewayFee,
+            `
 
-        ROUND(IFNULL(SUM(gst),0),2) AS gst,
+            SELECT
 
-        ROUND(IFNULL(SUM(tds),0),2) AS tds,
+                COUNT(*) AS totalSettlements,
 
-        ROUND(IFNULL(SUM(net_amount),0),2) AS netAmount,
+                ROUND(
+                    IFNULL(
+                        SUM(gross_amount),
+                        0
+                    ),
+                    2
+                ) AS grossAmount,
 
-        IFNULL(SUM(
-            CASE
-                WHEN settlement_status='SETTLED'
-                THEN 1
-                ELSE 0
-            END
-        ),0) AS settledCount,
+                ROUND(
+                    IFNULL(
+                        SUM(gateway_fee),
+                        0
+                    ),
+                    2
+                ) AS gatewayFee,
 
-        IFNULL(SUM(
-            CASE
-                WHEN settlement_status='PROCESSING'
-                THEN 1
-                ELSE 0
-            END
-        ),0) AS processingCount,
+                ROUND(
+                    IFNULL(
+                        SUM(gst),
+                        0
+                    ),
+                    2
+                ) AS gst,
 
-        IFNULL(SUM(
-            CASE
-                WHEN settlement_status='PENDING'
-                THEN 1
-                ELSE 0
-            END
-        ),0) AS pendingCount
+                ROUND(
+                    IFNULL(
+                        SUM(tds),
+                        0
+                    ),
+                    2
+                ) AS tds,
 
-    FROM transaction_settlements
+                ROUND(
+                    IFNULL(
+                        SUM(net_amount),
+                        0
+                    ),
+                    2
+                ) AS netAmount,
 
-    WHERE merchant_id = ?
+                IFNULL(
+                    SUM(
+                        CASE
+                            WHEN settlement_status='SETTLED'
+                            THEN 1
+                            ELSE 0
+                        END
+                    ),
+                    0
+                ) AS settledCount,
 
-    AND settlement_date BETWEEN ? AND ?
+                IFNULL(
+                    SUM(
+                        CASE
+                            WHEN settlement_status='PROCESSING'
+                            THEN 1
+                            ELSE 0
+                        END
+                    ),
+                    0
+                ) AS processingCount,
 
-    `,
+                IFNULL(
+                    SUM(
+                        CASE
+                            WHEN settlement_status='PENDING'
+                            THEN 1
+                            ELSE 0
+                        END
+                    ),
+                    0
+                ) AS pendingCount
 
-    [
-        merchantId,
-        formattedStartDate,
-        formattedEndDate
-    ]
+            FROM transaction_settlements
 
-);
+            WHERE merchant_id = ?
+
+            AND settlement_date
+                BETWEEN ? AND ?
+
+            `,
+
+            [
+                merchantId,
+                formattedStartDate,
+                formattedEndDate
+            ]
+
+        );
+
 
     return rows[0] || {
 
@@ -1101,64 +1686,90 @@ const getMerchantRefundSummary = async ({
     startDate,
     endDate
 }) => {
+
     const formattedStartDate =
-    startDate instanceof Date
-        ? startDate.toISOString().split("T")[0]
-        : startDate;
+        startDate instanceof Date
+            ? startDate
+                .toISOString()
+                .split("T")[0]
+            : startDate;
 
-const formattedEndDate =
-    endDate instanceof Date
-        ? endDate.toISOString().split("T")[0]
-        : endDate;
-    const [rows] = await pool.query(
 
-        `
-        SELECT
+    const formattedEndDate =
+        endDate instanceof Date
+            ? endDate
+                .toISOString()
+                .split("T")[0]
+            : endDate;
 
-            COUNT(*) AS totalRefunds,
 
-            ROUND(IFNULL(SUM(refund_amount),0),2) AS refundAmount,
+    const [rows] =
+        await pool.query(
 
-            IFNULL(SUM(
-                CASE
-                    WHEN refund_status='PROCESSED'
-                    THEN 1
-                    ELSE 0
-                END
-            ),0) AS processedRefunds,
+            `
 
-            IFNULL(SUM(
-                CASE
-                    WHEN refund_status='FAILED'
-                    THEN 1
-                    ELSE 0
-                END
-            ),0) AS failedRefunds,
+            SELECT
 
-            IFNULL(SUM(
-                CASE
-                    WHEN refund_status='PENDING'
-                    THEN 1
-                    ELSE 0
-                END
-            ),0) AS pendingRefunds
+                COUNT(*) AS totalRefunds,
 
-        FROM transaction_refunds
+                ROUND(
+                    IFNULL(
+                        SUM(refund_amount),
+                        0
+                    ),
+                    2
+                ) AS refundAmount,
 
-        WHERE merchant_id = ?
+                IFNULL(
+                    SUM(
+                        CASE
+                            WHEN refund_status='PROCESSED'
+                            THEN 1
+                            ELSE 0
+                        END
+                    ),
+                    0
+                ) AS processedRefunds,
 
-        AND DATE(created_at)
-            BETWEEN ? AND ?
+                IFNULL(
+                    SUM(
+                        CASE
+                            WHEN refund_status='FAILED'
+                            THEN 1
+                            ELSE 0
+                        END
+                    ),
+                    0
+                ) AS failedRefunds,
 
-        `,
+                IFNULL(
+                    SUM(
+                        CASE
+                            WHEN refund_status='PENDING'
+                            THEN 1
+                            ELSE 0
+                        END
+                    ),
+                    0
+                ) AS pendingRefunds
 
-        [
-    merchantId,
-    formattedStartDate,
-    formattedEndDate
-]
+            FROM transaction_refunds
 
-    );
+            WHERE merchant_id = ?
+
+            AND DATE(created_at)
+                BETWEEN ? AND ?
+
+            `,
+
+            [
+                merchantId,
+                formattedStartDate,
+                formattedEndDate
+            ]
+
+        );
+
 
     return rows[0] || {
 
@@ -1176,6 +1787,7 @@ const formattedEndDate =
 
 };
 
+
 /**
  * ===========================================================
  * REFUND REPORT
@@ -1191,7 +1803,10 @@ const getRefundReport = async ({
     limit = 20
 }) => {
 
-    const offset = (page - 1) * limit;
+    const offset =
+        (Number(page) - 1) *
+        Number(limit);
+
 
     let query = `
 
@@ -1236,21 +1851,37 @@ const getRefundReport = async ({
 
     `;
 
-    const params = [startDate, endDate];
+
+    const params = [
+        startDate,
+        endDate
+    ];
+
 
     if (merchantId) {
-        query += " AND tr.merchant_id=?";
+
+        query +=
+            " AND tr.merchant_id=?";
+
         params.push(merchantId);
+
     }
 
+
     if (refundStatus) {
-        query += " AND tr.refund_status=?";
+
+        query +=
+            " AND tr.refund_status=?";
+
         params.push(refundStatus);
+
     }
+
 
     query += `
 
-        ORDER BY tr.created_at DESC
+        ORDER BY
+            tr.created_at DESC
 
         LIMIT ?
 
@@ -1258,14 +1889,23 @@ const getRefundReport = async ({
 
     `;
 
-    params.push(Number(limit), Number(offset));
 
-    const [rows] = await pool.query(query, params);
+    params.push(
+        Number(limit),
+        Number(offset)
+    );
+
+
+    const [rows] =
+        await pool.query(
+            query,
+            params
+        );
+
 
     return rows;
 
 };
-
 
 
 /**
@@ -1283,17 +1923,26 @@ const getSettlementReport = async ({
     limit = 20
 }) => {
 
-    const offset = (page - 1) * limit;
+    const offset =
+        (Number(page) - 1) *
+        Number(limit);
+
 
     const formattedStartDate =
         startDate instanceof Date
-            ? startDate.toISOString().split("T")[0]
+            ? startDate
+                .toISOString()
+                .split("T")[0]
             : startDate;
+
 
     const formattedEndDate =
         endDate instanceof Date
-            ? endDate.toISOString().split("T")[0]
+            ? endDate
+                .toISOString()
+                .split("T")[0]
             : endDate;
+
 
     let query = `
 
@@ -1352,26 +2001,32 @@ const getSettlementReport = async ({
 
     `;
 
+
     const params = [
         formattedStartDate,
         formattedEndDate
     ];
 
+
     if (merchantId) {
 
-        query += " AND s.merchant_id = ?";
+        query +=
+            " AND s.merchant_id = ?";
 
         params.push(merchantId);
 
     }
 
+
     if (settlementStatus) {
 
-        query += " AND s.settlement_status = ?";
+        query +=
+            " AND s.settlement_status = ?";
 
         params.push(settlementStatus);
 
     }
+
 
     query += `
 
@@ -1385,14 +2040,24 @@ const getSettlementReport = async ({
 
     `;
 
+
     params.push(
         Number(limit),
         Number(offset)
     );
 
-    const [rows] = await pool.query(query, params);
+
+    const [rows] =
+        await pool.query(
+            query,
+            params
+        );
+
+
     return rows;
+
 };
+
 
 /**
  * ===========================================================
@@ -1433,7 +2098,6 @@ const getChargebackReport = async ({
         FROM transactions t
 
         INNER JOIN merchants m
-
             ON t.merchant_id=m.merchant_id
 
         WHERE t.status='CHARGEBACK'
@@ -1443,24 +2107,37 @@ const getChargebackReport = async ({
 
     `;
 
-    const params = [startDate, endDate];
+
+    const params = [
+        startDate,
+        endDate
+    ];
+
 
     if (merchantId) {
 
-        query += " AND t.merchant_id=?";
+        query +=
+            " AND t.merchant_id=?";
 
         params.push(merchantId);
 
     }
 
-    query += " ORDER BY t.created_at DESC";
 
-    const [rows] = await pool.query(query, params);
+    query +=
+        " ORDER BY t.created_at DESC";
+
+
+    const [rows] =
+        await pool.query(
+            query,
+            params
+        );
+
 
     return rows;
 
 };
-
 
 
 /**
@@ -1483,16 +2160,29 @@ const getGatewayFeeReport = async ({
 
             m.business_name,
 
-            COUNT(t.transaction_id) totalTransactions,
+            COUNT(
+                t.transaction_id
+            ) AS totalTransactions,
 
-            ROUND(IFNULL(SUM(t.amount),0),2) totalAmount,
+            ROUND(
+                IFNULL(
+                    SUM(t.amount),
+                    0
+                ),
+                2
+            ) AS totalAmount,
 
-            ROUND(IFNULL(SUM(t.gateway_fee),0),2) totalGatewayFee
+            ROUND(
+                IFNULL(
+                    SUM(t.gateway_fee),
+                    0
+                ),
+                2
+            ) AS totalGatewayFee
 
         FROM transactions t
 
         INNER JOIN merchants m
-
             ON t.merchant_id=m.merchant_id
 
         WHERE DATE(t.created_at)
@@ -1500,34 +2190,48 @@ const getGatewayFeeReport = async ({
 
     `;
 
-    const params = [startDate, endDate];
+
+    const params = [
+        startDate,
+        endDate
+    ];
+
 
     if (merchantId) {
 
-        query += " AND t.merchant_id=?";
+        query +=
+            " AND t.merchant_id=?";
 
         params.push(merchantId);
 
     }
+
 
     query += `
 
         GROUP BY
 
             m.merchant_id,
+
             m.merchant_name,
+
             m.business_name
 
         ORDER BY totalGatewayFee DESC
 
     `;
 
-    const [rows] = await pool.query(query, params);
+
+    const [rows] =
+        await pool.query(
+            query,
+            params
+        );
+
 
     return rows;
 
 };
-
 
 
 /**
@@ -1542,11 +2246,36 @@ const getExportTransactions = async ({
     merchantId = null
 }) => {
 
-    console.log("Export Filters:", {
-    startDate,
-    endDate,
-    merchantId
-});
+    const startDateString =
+        typeof startDate === "string"
+            ? startDate.slice(0, 10)
+            : new Date(startDate)
+                .toISOString()
+                .slice(0, 10);
+
+
+    const endDateString =
+        typeof endDate === "string"
+            ? endDate.slice(0, 10)
+            : new Date(endDate)
+                .toISOString()
+                .slice(0, 10);
+
+
+    const {
+        startUTC
+    } = getISTDayRangeUTC(
+        startDateString
+    );
+
+
+    const {
+        endUTC
+    } = getISTDayRangeUTC(
+        endDateString
+    );
+
+
     let query = `
 
         SELECT
@@ -1582,47 +2311,46 @@ const getExportTransactions = async ({
         FROM transactions t
 
         INNER JOIN merchants m
-
             ON t.merchant_id=m.merchant_id
 
-        WHERE DATE(t.created_at)
-            BETWEEN ? AND ?
+        WHERE t.created_at >= ?
+
+        AND t.created_at < ?
 
     `;
-    const formattedStartDate = new Date(startDate)
-    .toISOString()
-    .slice(0, 10);
 
-const formattedEndDate = new Date(endDate)
-    .toISOString()
-    .slice(0, 10);
 
-    const params = [formattedStartDate, formattedEndDate];
+    const params = [
+        startUTC,
+        endUTC
+    ];
+
 
     if (merchantId) {
 
-        query += " AND t.merchant_id=?";
+        query +=
+            " AND t.merchant_id=?";
 
         params.push(merchantId);
 
     }
 
-    const start = new Date(startDate);
-const end = new Date(endDate);
 
-console.log("Parsed Dates:", {
-    start,
-    end,
-    startValid: !isNaN(start.getTime()),
-    endValid: !isNaN(end.getTime())
-});
-    query += " ORDER BY t.created_at DESC";
+    query +=
+        " ORDER BY t.created_at DESC";
 
-    const [rows] = await pool.query(query, params);
+
+    const [rows] =
+        await pool.query(
+            query,
+            params
+        );
+
 
     return rows;
 
 };
+
 
 /**
  * ===========================================================
@@ -1641,14 +2369,23 @@ const getUPIReport = async ({
         SELECT
 
             t.transaction_id,
+
             t.order_id,
+
             m.merchant_name,
+
             t.customer_name,
+
             t.amount,
+
             t.status,
+
             u.vpa,
+
             u.upi_app,
+
             u.bank_name,
+
             t.created_at
 
         FROM transaction_upi u
@@ -1664,16 +2401,33 @@ const getUPIReport = async ({
 
     `;
 
-    const params = [startDate, endDate];
+
+    const params = [
+        startDate,
+        endDate
+    ];
+
 
     if (merchantId) {
-        query += " AND t.merchant_id=?";
+
+        query +=
+            " AND t.merchant_id=?";
+
         params.push(merchantId);
+
     }
 
-    query += " ORDER BY t.created_at DESC";
 
-    const [rows] = await pool.query(query, params);
+    query +=
+        " ORDER BY t.created_at DESC";
+
+
+    const [rows] =
+        await pool.query(
+            query,
+            params
+        );
+
 
     return rows;
 
@@ -1697,15 +2451,25 @@ const getCardReport = async ({
         SELECT
 
             t.transaction_id,
+
             t.order_id,
+
             m.merchant_name,
+
             t.customer_name,
+
             t.amount,
+
             t.status,
+
             c.card_network,
+
             c.card_type,
+
             c.last_four_digits,
+
             c.issuing_bank,
+
             t.created_at
 
         FROM transaction_card c
@@ -1721,16 +2485,33 @@ const getCardReport = async ({
 
     `;
 
-    const params = [startDate, endDate];
+
+    const params = [
+        startDate,
+        endDate
+    ];
+
 
     if (merchantId) {
-        query += " AND t.merchant_id=?";
+
+        query +=
+            " AND t.merchant_id=?";
+
         params.push(merchantId);
+
     }
 
-    query += " ORDER BY t.created_at DESC";
 
-    const [rows] = await pool.query(query, params);
+    query +=
+        " ORDER BY t.created_at DESC";
+
+
+    const [rows] =
+        await pool.query(
+            query,
+            params
+        );
+
 
     return rows;
 
@@ -1754,13 +2535,21 @@ const getWalletReport = async ({
         SELECT
 
             t.transaction_id,
+
             t.order_id,
+
             m.merchant_name,
+
             t.customer_name,
+
             t.amount,
+
             t.status,
+
             w.wallet_provider,
+
             w.wallet_mobile,
+
             t.created_at
 
         FROM transaction_wallet w
@@ -1776,16 +2565,33 @@ const getWalletReport = async ({
 
     `;
 
-    const params = [startDate, endDate];
+
+    const params = [
+        startDate,
+        endDate
+    ];
+
 
     if (merchantId) {
-        query += " AND t.merchant_id=?";
+
+        query +=
+            " AND t.merchant_id=?";
+
         params.push(merchantId);
+
     }
 
-    query += " ORDER BY t.created_at DESC";
 
-    const [rows] = await pool.query(query, params);
+    query +=
+        " ORDER BY t.created_at DESC";
+
+
+    const [rows] =
+        await pool.query(
+            query,
+            params
+        );
+
 
     return rows;
 
@@ -1809,13 +2615,21 @@ const getNetBankingReport = async ({
         SELECT
 
             t.transaction_id,
+
             t.order_id,
+
             m.merchant_name,
+
             t.customer_name,
+
             t.amount,
+
             t.status,
+
             n.bank_name,
+
             n.reference_number,
+
             t.created_at
 
         FROM transaction_netbanking n
@@ -1831,16 +2645,33 @@ const getNetBankingReport = async ({
 
     `;
 
-    const params = [startDate, endDate];
+
+    const params = [
+        startDate,
+        endDate
+    ];
+
 
     if (merchantId) {
-        query += " AND t.merchant_id=?";
+
+        query +=
+            " AND t.merchant_id=?";
+
         params.push(merchantId);
+
     }
 
-    query += " ORDER BY t.created_at DESC";
 
-    const [rows] = await pool.query(query, params);
+    query +=
+        " ORDER BY t.created_at DESC";
+
+
+    const [rows] =
+        await pool.query(
+            query,
+            params
+        );
+
 
     return rows;
 
@@ -1864,14 +2695,23 @@ const getEMIReport = async ({
         SELECT
 
             t.transaction_id,
+
             t.order_id,
+
             m.merchant_name,
+
             t.customer_name,
+
             t.amount,
+
             t.status,
+
             e.bank_name,
+
             e.emi_tenure,
+
             e.interest_rate,
+
             t.created_at
 
         FROM transaction_emi e
@@ -1887,16 +2727,33 @@ const getEMIReport = async ({
 
     `;
 
-    const params = [startDate, endDate];
+
+    const params = [
+        startDate,
+        endDate
+    ];
+
 
     if (merchantId) {
-        query += " AND t.merchant_id=?";
+
+        query +=
+            " AND t.merchant_id=?";
+
         params.push(merchantId);
+
     }
 
-    query += " ORDER BY t.created_at DESC";
 
-    const [rows] = await pool.query(query, params);
+    query +=
+        " ORDER BY t.created_at DESC";
+
+
+    const [rows] =
+        await pool.query(
+            query,
+            params
+        );
+
 
     return rows;
 
@@ -1920,13 +2777,21 @@ const getPayLaterReport = async ({
         SELECT
 
             t.transaction_id,
+
             t.order_id,
+
             m.merchant_name,
+
             t.customer_name,
+
             t.amount,
+
             t.status,
+
             p.provider_name,
+
             p.loan_reference,
+
             t.created_at
 
         FROM transaction_paylater p
@@ -1942,71 +2807,128 @@ const getPayLaterReport = async ({
 
     `;
 
-    const params = [startDate, endDate];
+
+    const params = [
+        startDate,
+        endDate
+    ];
+
 
     if (merchantId) {
-        query += " AND t.merchant_id=?";
+
+        query +=
+            " AND t.merchant_id=?";
+
         params.push(merchantId);
+
     }
 
-    query += " ORDER BY t.created_at DESC";
 
-    const [rows] = await pool.query(query, params);
+    query +=
+        " ORDER BY t.created_at DESC";
+
+
+    const [rows] =
+        await pool.query(
+            query,
+            params
+        );
+
 
     return rows;
+
 };
+
+
+/**
+ * ===========================================================
+ * EXPORTS
+ * ===========================================================
+ */
 
 module.exports = {
 
     // ==========================
     // Daily Reports
     // ==========================
+
     getDailySummary,
+
     getHourlyTransactions,
+
     getDailyTransactions,
+
     getPaymentMethodDistribution,
+
     getPaymentTypeDistribution,
+
 
     // ==========================
     // Monthly Reports
     // ==========================
+
     getMonthlySummary,
+
     getMonthlyRevenueTrend,
+
     getMonthlyTransactionTrend,
+
     getMonthlyRefundTrend,
+
     getTopMerchants,
+
 
     // ==========================
     // Merchant Reports
     // ==========================
+
     getMerchantSummary,
+
     getMerchantRevenueTrend,
+
     getMerchantPaymentMethods,
+
     getMerchantRecentTransactions,
+
     getMerchantSettlementSummary,
+
     getMerchantRefundSummary,
+
 
     // ==========================
     // Refund / Settlement Reports
     // ==========================
+
     getRefundReport,
+
     getSettlementReport,
+
     getChargebackReport,
+
     getGatewayFeeReport,
+
 
     // ==========================
     // Export Reports
     // ==========================
+
     getExportTransactions,
+
 
     // ==========================
     // Payment Method Reports
     // ==========================
+
     getUPIReport,
+
     getCardReport,
+
     getWalletReport,
+
     getNetBankingReport,
+
     getEMIReport,
+
     getPayLaterReport
 
 };
