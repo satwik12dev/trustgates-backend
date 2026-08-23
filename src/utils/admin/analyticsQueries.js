@@ -87,48 +87,45 @@ const ANALYTICS_QUERIES = Object.freeze({
     GET_TRANSACTION_TREND: `
 
         SELECT
+    DATE_FORMAT(created_at, '%Y-%m-%d') AS report_date,
 
-            DATE_FORMAT(
-                created_at,
-                '%Y-%m-%d'
-            ) AS report_date,
+    COUNT(*) AS total_transactions,
 
-            COUNT(*) AS total_transactions,
+    SUM(
+        CASE
+            WHEN status = 'SUCCESS'
+            THEN 1
+            ELSE 0
+        END
+    ) AS successful_transactions,
 
-            SUM(
-                CASE
-                    WHEN status = 'SUCCESS'
-                    THEN 1
-                    ELSE 0
-                END
-            ) AS successful_transactions,
+    SUM(
+        CASE
+            WHEN status = 'FAILED'
+            THEN 1
+            ELSE 0
+        END
+    ) AS failed_transactions,
 
-            SUM(
-                CASE
-                    WHEN status = 'FAILED'
-                    THEN 1
-                    ELSE 0
-                END
-            ) AS failed_transactions,
+    SUM(
+        CASE
+            WHEN status = 'PENDING'
+            THEN 1
+            ELSE 0
+        END
+    ) AS pending_transactions
 
-            SUM(
-                CASE
-                    WHEN status = 'PENDING'
-                    THEN 1
-                    ELSE 0
-                END
-            ) AS pending_transactions
+FROM transactions
 
-        FROM transactions
+WHERE
+    created_at >= ?
+    AND created_at < ?
 
-        GROUP BY
-            DATE_FORMAT(
-                created_at,
-                '%Y-%m-%d'
-            )
+GROUP BY
+    DATE_FORMAT(created_at, '%Y-%m-%d')
 
-        ORDER BY
-            report_date ASC
+ORDER BY
+    report_date ASC
 
     `,
     // ==========================================================
