@@ -111,7 +111,6 @@ const dashboardAnalytics = async (
 // GET TRANSACTION TREND
 // GET /admin/analytics/transaction-trend
 // ==========================================================
-
 const transactionTrend = async (
     req,
     res,
@@ -120,8 +119,17 @@ const transactionTrend = async (
 
     try {
 
+        const {
+            startDate,
+            endDate
+        } = req.query;
+
+
         const trend =
-            await getTransactionTrend();
+            await getTransactionTrend({
+                startDate,
+                endDate
+            });
 
 
         return res.status(200).json({
