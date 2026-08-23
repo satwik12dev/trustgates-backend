@@ -1,6 +1,6 @@
 const db = require("../../config/pool");
 
-const PAYLATER_QUERIES =require("../../utils/admin/paylaterQueries");
+const PAYLATER_QUERIES = require("../../utils/admin/paylaterQueries");
 
 
 // ==========================================================
@@ -410,6 +410,11 @@ const getPayLaterSummary = async ({
             successfulAmount:
                 Number(
                     row.successful_amount || 0
+                ),
+
+            remainingAmount:
+                Number(
+                    row.remaining_amount || 0
                 ),
 
             averageTransactionValue:
