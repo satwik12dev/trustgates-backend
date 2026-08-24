@@ -1,42 +1,48 @@
 const db = require("../../../config/pool");
 
-const deleteWebhookService = require("../../../services/merchant/webhook/deleteWebhook.service");
+const deleteWebhookService =
+    require("../../../services/merchant/webhook/deleteWebhook.service");
+
 
 const deleteWebhook = async (req, res) => {
 
-    const connection = await db.getConnection();
+    const connection =
+        await db.getConnection();
 
     try {
 
-        console.log("DELETE WEBHOOK DEBUG:", {
-            params: req.params,
-            user: req.user,
-            webhookId: req.params.id,
-            merchantId: req.user?.merchantId,
-            merchant_id: req.user?.merchant_id
-        });
-
         await connection.beginTransaction();
 
-        const result = await deleteWebhookService(
-            connection,
-            {
-                merchantId: req.user.merchantId,
-                webhookId: req.params.id
-            }
-        );
+        const result =
+            await deleteWebhookService(
+                connection,
+                {
+                    merchantId:
+                        req.user.merchant_id,
+
+                    webhookId:
+                        req.params.id
+                }
+            );
 
         await connection.commit();
 
         return res.status(200).json({
+
             success: true,
-            message: "Webhook disabled successfully.",
+
+            message:
+                "Webhook disabled successfully.",
+
             data: result
+
         });
 
     } catch (error) {
 
-        await connection.rollback();
+        try {
+            await connection.rollback();
+        } catch (_) {}
 
         console.error(
             "Delete Webhook Error:",
@@ -44,10 +50,13 @@ const deleteWebhook = async (req, res) => {
         );
 
         return res.status(500).json({
+
             success: false,
+
             message:
                 error.message ||
                 "Failed to disable webhook."
+
         });
 
     } finally {
@@ -55,6 +64,8 @@ const deleteWebhook = async (req, res) => {
         connection.release();
 
     }
+
 };
+
 
 module.exports = deleteWebhook;
