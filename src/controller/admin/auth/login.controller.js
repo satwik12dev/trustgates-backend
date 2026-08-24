@@ -9,6 +9,7 @@ const {
     "../../../services/admin/login.service"
 );
 
+
 const adminlogin = async (
     req,
     res,
@@ -16,6 +17,10 @@ const adminlogin = async (
 ) => {
 
     try {
+
+        // ==================================================
+        // Validate Request
+        // ==================================================
 
         const {
             error,
@@ -28,19 +33,34 @@ const adminlogin = async (
             }
         );
 
+
         if (error) {
 
             return res.status(400).json({
+
                 success: false,
+
                 message:
                     error.details[0].message
+
             });
+
         }
+
+
+        // ==================================================
+        // Credentials
+        // ==================================================
 
         const {
             email,
             password
         } = value;
+
+
+        // ==================================================
+        // Login Service
+        // ==================================================
 
         const result =
             await loginService(
@@ -58,6 +78,11 @@ const adminlogin = async (
                 }
             );
 
+
+        // ==================================================
+        // Success
+        // ==================================================
+
         return res.status(200).json({
 
             success: true,
@@ -73,9 +98,15 @@ const adminlogin = async (
 
             admin:
                 result.admin
+
         });
 
+
     } catch (error) {
+
+        // ==================================================
+        // Invalid Credentials
+        // ==================================================
 
         if (
             error.message ===
@@ -83,11 +114,20 @@ const adminlogin = async (
         ) {
 
             return res.status(401).json({
+
                 success: false,
+
                 message:
                     "Invalid email or password."
+
             });
+
         }
+
+
+        // ==================================================
+        // Inactive Account
+        // ==================================================
 
         if (
             error.message ===
@@ -95,11 +135,20 @@ const adminlogin = async (
         ) {
 
             return res.status(403).json({
+
                 success: false,
+
                 message:
                     "Your account is inactive."
+
             });
+
         }
+
+
+        // ==================================================
+        // Token Configuration Error
+        // ==================================================
 
         if (
             error.message ===
@@ -107,13 +156,23 @@ const adminlogin = async (
         ) {
 
             return res.status(500).json({
+
                 success: false,
+
                 code:
                     "ADMIN_TOKEN_CONFIGURATION_ERROR",
+
                 message:
                     "Admin authentication configuration is invalid."
+
             });
+
         }
+
+
+        // ==================================================
+        // Admin Not Found
+        // ==================================================
 
         if (
             error.message ===
@@ -121,13 +180,23 @@ const adminlogin = async (
         ) {
 
             return res.status(401).json({
+
                 success: false,
+
                 code:
                     "ADMIN_NOT_FOUND",
+
                 message:
                     "Admin account not found."
+
             });
+
         }
+
+
+        // ==================================================
+        // Session Creation Failed
+        // ==================================================
 
         if (
             error.message ===
@@ -135,16 +204,30 @@ const adminlogin = async (
         ) {
 
             return res.status(500).json({
+
                 success: false,
+
                 code:
                     "ADMIN_SESSION_CREATION_FAILED",
+
                 message:
                     "Failed to create admin session."
+
             });
+
         }
 
+
+        // ==================================================
+        // Unknown Error
+        // ==================================================
+
         next(error);
+
     }
+
 };
 
-module.exports = adminlogin;
+
+module.exports =
+    adminlogin;

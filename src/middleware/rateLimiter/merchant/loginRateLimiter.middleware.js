@@ -1,5 +1,6 @@
 const redis = require("../../../config/redis");
 
+
 // ==========================================================
 // Merchant Login Rate Limiter
 // ==========================================================
@@ -8,31 +9,72 @@ const redis = require("../../../config/redis");
 // 3 attempts / minute
 // 4th attempt -> 5 minute cooldown
 //
-// Load testing:
-// Higher limit so backend capacity can be measured
+// Load Testing:
+// 100 attempts / minute
+//
+// Key:
+// IP + normalized email
 //
 // ==========================================================
 
+
 const PRODUCTION_LIMIT = 3;
+
 const LOAD_TEST_LIMIT = 100;
+
 const WINDOW_SECONDS = 60;
+
 const COOLDOWN_SECONDS = 300;
 
-const loginRateLimiter = async (req, res, next) => {
+
+// ==========================================================
+// Middleware
+// ==========================================================
+
+const loginRateLimiter = async (
+    req,
+    res,
+    next
+) => {
+
     try {
 
-        const email = String(req.body.email || "")
-            .trim()
-            .toLowerCase();
+        // ==================================================
+        // Normalize Email
+        // ==================================================
+
+        const email =
+            String(
+                req.body?.email || ""
+            )
+                .trim()
+                .toLowerCase();
+
+
+        // ==================================================
+        // Get Client IP
+        // ==================================================
 
         const ip =
             req.ip ||
             req.headers["x-forwarded-for"] ||
             "unknown";
 
+
+        // ==================================================
+        // Skip If Email Missing
+        // ==================================================
+
         if (!email) {
+
             return next();
+
         }
+
+
+        // ==================================================
+        // Redis Keys
+        // ==================================================
 
         const key =
             `rate-limit:login:${ip}:${email}`;
@@ -40,82 +82,127 @@ const loginRateLimiter = async (req, res, next) => {
         const cooldownKey =
             `rate-limit:login-cooldown:${ip}:${email}`;
 
+
         // ==================================================
-        // Select limit
+        // Load Testing Mode
         // ==================================================
 
         const isLoadTesting =
             process.env.LOAD_TESTING === "true";
+
 
         const maxAttempts =
             isLoadTesting
                 ? LOAD_TEST_LIMIT
                 : PRODUCTION_LIMIT;
 
+
         // ==================================================
-        // Check cooldown
+        // Check Existing Cooldown
         // ==================================================
 
         const cooldown =
-            await redis.get(cooldownKey);
+            await redis.get(
+                cooldownKey
+            );
+
 
         if (cooldown) {
 
             const ttl =
-                await redis.ttl(cooldownKey);
+                await redis.ttl(
+                    cooldownKey
+                );
+
 
             return res.status(429).json({
+
                 success: false,
+
                 message:
                     "Too many login requests. Please try again later.",
+
                 retryAfter:
                     ttl > 0
                         ? ttl
                         : COOLDOWN_SECONDS
+
             });
+
         }
 
+
         // ==================================================
-        // Count requests
+        // Increment Request Counter
         // ==================================================
 
         const count =
-            await redis.incr(key);
+            await redis.incr(
+                key
+            );
 
-        // First request -> start 60 second window
+
+        // ==================================================
+        // First Request
+        // Start 60 Second Window
+        // ==================================================
+
         if (count === 1) {
 
             await redis.expire(
                 key,
                 WINDOW_SECONDS
             );
+
         }
 
+
         // ==================================================
-        // Limit exceeded
+        // Limit Exceeded
         // ==================================================
 
-        if (count > maxAttempts) {
+        if (
+            count > maxAttempts
+        ) {
 
-            await redis.del(key);
+            // Remove current counter
+            await redis.del(
+                key
+            );
 
+
+            // Start 5 minute cooldown
             await redis.set(
                 cooldownKey,
                 "1",
                 {
-                    EX: COOLDOWN_SECONDS
+                    EX:
+                        COOLDOWN_SECONDS
                 }
             );
 
+
             return res.status(429).json({
+
                 success: false,
+
                 message:
-                    "Too many login requests. Please try again later.",
-                retryAfter: COOLDOWN_SECONDS
+                    "Too many login requests. Please try again after 5 minutes.",
+
+                retryAfter:
+                    COOLDOWN_SECONDS
+
             });
+
         }
 
-        next();
+
+        // ==================================================
+        // Continue
+        // ==================================================
+
+        return next();
+
 
     } catch (error) {
 
@@ -124,12 +211,21 @@ const loginRateLimiter = async (req, res, next) => {
             error
         );
 
-        // Fail-open so Redis failure doesn't
-        // make login completely unavailable.
-        next();
+
+        // ==================================================
+        // Fail Open
+        // Redis failure should NOT break login
+        // ==================================================
+
+        return next();
+
     }
+
 };
 
+
 module.exports = {
+
     loginRateLimiter
+
 };

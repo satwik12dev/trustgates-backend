@@ -1,3 +1,4 @@
+const argon2 = require("argon2");
 const bcrypt = require("bcrypt");
 const crypto = require("crypto");
 
@@ -17,6 +18,22 @@ const {
 } = require("../../utils/admin/audti.actions");
 
 
+// ==========================================================
+// Argon2 Configuration
+// ==========================================================
+
+const ARGON2_OPTIONS = {
+    type: argon2.argon2id,
+    memoryCost: 19456,
+    timeCost: 2,
+    parallelism: 1
+};
+
+
+// ==========================================================
+// Admin Login Service
+// ==========================================================
+
 const loginService = async (
     email,
     password,
@@ -35,6 +52,10 @@ const loginService = async (
     } = auditContext;
 
 
+    // ======================================================
+    // Validate Input
+    // ======================================================
+
     if (
         !normalizedEmail ||
         typeof password !== "string" ||
@@ -42,6 +63,7 @@ const loginService = async (
     ) {
 
         await createAuditLog({
+
             adminId: null,
 
             action:
@@ -61,6 +83,7 @@ const loginService = async (
                 reason:
                     "INVALID_LOGIN_INPUT"
             }
+
         });
 
         throw new Error(
@@ -69,8 +92,13 @@ const loginService = async (
     }
 
 
+    // ======================================================
+    // Find Admin
+    // ======================================================
+
     const [rows] =
         await db.query(
+
             `
             SELECT
                 admin_id,
@@ -80,17 +108,29 @@ const loginService = async (
                 role,
                 status,
                 token_version
+
             FROM admins
+
             WHERE email = ?
+
             LIMIT 1
             `,
-            [normalizedEmail]
+
+            [
+                normalizedEmail
+            ]
+
         );
 
+
+    // ======================================================
+    // Admin Not Found
+    // ======================================================
 
     if (!rows.length) {
 
         await createAuditLog({
+
             adminId: null,
 
             action:
@@ -110,6 +150,7 @@ const loginService = async (
                 reason:
                     "INVALID_EMAIL_OR_PASSWORD"
             }
+
         });
 
         throw new Error(
@@ -118,14 +159,20 @@ const loginService = async (
     }
 
 
-    const admin = rows[0];
+    const admin =
+        rows[0];
 
+
+    // ======================================================
+    // Account Status
+    // ======================================================
 
     if (
         admin.status !== "ACTIVE"
     ) {
 
         await createAuditLog({
+
             adminId:
                 admin.admin_id,
 
@@ -149,6 +196,7 @@ const loginService = async (
                 reason:
                     "ADMIN_ACCOUNT_INACTIVE"
             }
+
         });
 
         throw new Error(
@@ -157,16 +205,64 @@ const loginService = async (
     }
 
 
-    const isPasswordValid =
-        await bcrypt.compare(
-            password,
-            admin.password_hash
-        );
+    // ======================================================
+    // Password Verification
+    // ======================================================
 
+    const passwordHash =
+        admin.password_hash || "";
+
+    let isPasswordValid = false;
+
+    let isBcryptPassword = false;
+
+
+    // ======================================================
+    // Argon2id
+    // ======================================================
+
+    if (
+        passwordHash.startsWith("$argon2id$")
+    ) {
+
+        isPasswordValid =
+            await argon2.verify(
+                passwordHash,
+                password
+            );
+
+    }
+
+
+    // ======================================================
+    // Legacy bcrypt
+    // ======================================================
+
+    else if (
+        passwordHash.startsWith("$2a$") ||
+        passwordHash.startsWith("$2b$") ||
+        passwordHash.startsWith("$2y$")
+    ) {
+
+        isBcryptPassword = true;
+
+        isPasswordValid =
+            await bcrypt.compare(
+                password,
+                passwordHash
+            );
+
+    }
+
+
+    // ======================================================
+    // Invalid Password
+    // ======================================================
 
     if (!isPasswordValid) {
 
         await createAuditLog({
+
             adminId:
                 admin.admin_id,
 
@@ -190,6 +286,7 @@ const loginService = async (
                 reason:
                     "INVALID_EMAIL_OR_PASSWORD"
             }
+
         });
 
         throw new Error(
@@ -197,6 +294,50 @@ const loginService = async (
         );
     }
 
+
+    // ======================================================
+    // bcrypt → Argon2id Migration
+    // ======================================================
+    //
+    // Migration intentionally retained.
+    //
+    // Existing bcrypt admin accounts are migrated
+    // after successful authentication.
+    //
+    // ======================================================
+
+    if (isBcryptPassword) {
+
+        const newPasswordHash =
+            await argon2.hash(
+                password,
+                ARGON2_OPTIONS
+            );
+
+
+        await db.query(
+
+            `
+            UPDATE admins
+
+            SET password_hash = ?
+
+            WHERE admin_id = ?
+            `,
+
+            [
+                newPasswordHash,
+                admin.admin_id
+            ]
+
+        );
+
+    }
+
+
+    // ======================================================
+    // Token Version Validation
+    // ======================================================
 
     const tokenVersion =
         Number(
@@ -210,6 +351,7 @@ const loginService = async (
     ) {
 
         await createAuditLog({
+
             adminId:
                 admin.admin_id,
 
@@ -233,6 +375,7 @@ const loginService = async (
                 reason:
                     "INVALID_TOKEN_CONFIGURATION"
             }
+
         });
 
         throw new Error(
@@ -241,17 +384,30 @@ const loginService = async (
     }
 
 
+    // ======================================================
+    // Database Connection
+    // ======================================================
+
     const connection =
         await db.getConnection();
 
 
     try {
 
+        // ==================================================
+        // Start Transaction
+        // ==================================================
+
         await connection.beginTransaction();
 
 
+        // ==================================================
+        // Lock Admin Row
+        // ==================================================
+
         const [adminLockRows] =
             await connection.query(
+
                 `
                 SELECT
                     admin_id,
@@ -260,12 +416,20 @@ const loginService = async (
                     role,
                     status,
                     token_version
+
                 FROM admins
+
                 WHERE admin_id = ?
+
                 LIMIT 1
+
                 FOR UPDATE
                 `,
-                [admin.admin_id]
+
+                [
+                    admin.admin_id
+                ]
+
             );
 
 
@@ -281,6 +445,10 @@ const loginService = async (
             adminLockRows[0];
 
 
+        // ==================================================
+        // Re-check Account Status
+        // ==================================================
+
         if (
             lockedAdmin.status !== "ACTIVE"
         ) {
@@ -290,6 +458,10 @@ const loginService = async (
             );
         }
 
+
+        // ==================================================
+        // Re-check Token Version
+        // ==================================================
 
         const currentTokenVersion =
             Number(
@@ -310,15 +482,24 @@ const loginService = async (
         }
 
 
+        // ==================================================
+        // Token Family
+        // ==================================================
+
         const tokenFamilyId =
             crypto.randomUUID();
 
+
+        // ==================================================
+        // Generate Tokens
+        // ==================================================
 
         const {
             accessToken,
             refreshToken,
             sessionId
         } = generateAdminToken(
+
             {
                 admin_id:
                     lockedAdmin.admin_id,
@@ -328,10 +509,17 @@ const loginService = async (
 
                 token_version:
                     currentTokenVersion
+
             },
+
             tokenFamilyId
+
         );
 
+
+        // ==================================================
+        // Hash Refresh Token
+        // ==================================================
 
         const refreshTokenHash =
             crypto
@@ -340,16 +528,27 @@ const loginService = async (
                 .digest("hex");
 
 
+        // ==================================================
+        // Refresh Token Expiry
+        // ==================================================
+
         const expiresAt =
             new Date(
+
                 Date.now() +
                 7 * 24 * 60 * 60 * 1000
+
             );
 
+
+        // ==================================================
+        // Store Refresh Token
+        // ==================================================
 
         const [
             refreshInsertResult
         ] = await connection.query(
+
             `
             INSERT INTO admin_refresh_tokens
             (
@@ -360,8 +559,18 @@ const loginService = async (
                 revoked,
                 token_family_id
             )
-            VALUES (?, ?, ?, ?, FALSE, ?)
+
+            VALUES
+            (
+                ?,
+                ?,
+                ?,
+                ?,
+                FALSE,
+                ?
+            )
             `,
+
             [
                 lockedAdmin.admin_id,
                 sessionId,
@@ -369,6 +578,7 @@ const loginService = async (
                 expiresAt,
                 tokenFamilyId
             ]
+
         );
 
 
@@ -382,17 +592,33 @@ const loginService = async (
         }
 
 
+        // ==================================================
+        // Update Last Login
+        // ==================================================
+
         await connection.query(
+
             `
             UPDATE admins
+
             SET last_login_at = NOW()
+
             WHERE admin_id = ?
             `,
-            [lockedAdmin.admin_id]
+
+            [
+                lockedAdmin.admin_id
+            ]
+
         );
 
 
+        // ==================================================
+        // Audit Log
+        // ==================================================
+
         await createAuditLog({
+
             adminId:
                 lockedAdmin.admin_id,
 
@@ -413,6 +639,7 @@ const loginService = async (
             requestId,
 
             metadata: {
+
                 role:
                     lockedAdmin.role,
 
@@ -420,14 +647,24 @@ const loginService = async (
                     currentTokenVersion,
 
                 sessionId
+
             },
 
             connection
+
         });
 
 
+        // ==================================================
+        // Commit
+        // ==================================================
+
         await connection.commit();
 
+
+        // ==================================================
+        // Return
+        // ==================================================
 
         return {
 
@@ -436,6 +673,7 @@ const loginService = async (
             refreshToken,
 
             admin: {
+
                 admin_id:
                     lockedAdmin.admin_id,
 
@@ -447,14 +685,18 @@ const loginService = async (
 
                 role:
                     lockedAdmin.role
+
             }
+
         };
 
 
     } catch (error) {
 
         try {
+
             await connection.rollback();
+
         } catch (_) {
         }
 
@@ -465,6 +707,7 @@ const loginService = async (
         connection.release();
 
     }
+
 };
 
 

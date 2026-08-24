@@ -1,3 +1,4 @@
+const argon2 = require("argon2");
 const bcrypt = require("bcrypt");
 
 const db = require("../../../config/pool");
@@ -16,40 +17,37 @@ const {
 
 
 // ==========================================================
-// Merchant Login
-// ==========================================================
-//
-// Login requirement:
-//
-// 1. Valid email/password
-// 2. Email must be verified
-//
-// IMPORTANT:
-//
-// approval_status / kyc_status / account_status
-// DO NOT block login.
-//
-// Dashboard access will be controlled separately.
-//
+// Argon2 Configuration
 // ==========================================================
 
+const ARGON2_OPTIONS = {
+    type: argon2.argon2id,
+    memoryCost: 19456,
+    timeCost: 2,
+    parallelism: 1
+};
+
+
+// ==========================================================
+// Merchant Login
+// ==========================================================
 
 const login = async (req, res) => {
 
     try {
 
         // ==================================================
-        // 1. Get Request Data
+        // 1. Request Data
         // ==================================================
 
         let {
             email,
             password
-        } = req.body;
+        } = req.body || {};
 
 
         // ==================================================
-        // 2. Basic Validation
+        // 2. Required Fields
         // ==================================================
 
         if (
@@ -74,24 +72,18 @@ const login = async (req, res) => {
         // ==================================================
         // 3. Normalize Email
         // ==================================================
-        //
-        // IMPORTANT:
-        // Do NOT trim password.
-        //
-        // Password spaces can technically be valid.
-        //
-        // ==================================================
 
         email =
             String(email)
                 .trim()
                 .toLowerCase();
 
+        // Never trim password.
         password =
             String(password);
 
 
-        if (!email) {
+        if (!email || !password) {
 
             return res.status(400).json({
 
@@ -113,9 +105,7 @@ const login = async (req, res) => {
             /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
 
 
-        if (
-            !emailRegex.test(email)
-        ) {
+        if (!emailRegex.test(email)) {
 
             return res.status(401).json({
 
@@ -133,24 +123,18 @@ const login = async (req, res) => {
         // 5. Find Merchant
         // ==================================================
 
-        const [
-            merchants
-        ] = await db.query(
+        const [merchants] =
+            await db.query(
 
-            `
+                `
                 SELECT
-
                     merchant_id,
                     merchant_code,
-
                     merchant_name,
                     business_name,
-
                     email,
                     password_hash,
-
                     email_verified,
-
                     approval_status,
                     kyc_status,
                     account_status
@@ -160,26 +144,18 @@ const login = async (req, res) => {
                 WHERE email = ?
 
                 LIMIT 1
-            `,
+                `,
 
-            [
-                email
-            ]
+                [email]
 
-        );
+            );
 
 
         // ==================================================
         // 6. Merchant Not Found
         // ==================================================
-        //
-        // Generic response prevents email enumeration.
-        //
-        // ==================================================
 
-        if (
-            !merchants.length
-        ) {
+        if (!merchants.length) {
 
             return res.status(401).json({
 
@@ -201,11 +177,54 @@ const login = async (req, res) => {
         // 7. Password Verification
         // ==================================================
 
-        const isPasswordValid =
-            await bcrypt.compare(
-                password,
-                merchant.password_hash
-            );
+        let isPasswordValid = false;
+
+        let isBcryptPassword = false;
+        let isArgon2Password = false;
+
+
+        const passwordHash =
+            merchant.password_hash || "";
+
+
+        // ==================================================
+        // 7A. Argon2id Password
+        // ==================================================
+
+        if (
+            passwordHash.startsWith("$argon2id$")
+        ) {
+
+            isArgon2Password = true;
+
+            isPasswordValid =
+                await argon2.verify(
+                    passwordHash,
+                    password
+                );
+
+        }
+
+
+        // ==================================================
+        // 7B. Legacy bcrypt Password
+        // ==================================================
+
+        else if (
+            passwordHash.startsWith("$2a$") ||
+            passwordHash.startsWith("$2b$") ||
+            passwordHash.startsWith("$2y$")
+        ) {
+
+            isBcryptPassword = true;
+
+            isPasswordValid =
+                await bcrypt.compare(
+                    password,
+                    passwordHash
+                );
+
+        }
 
 
         // ==================================================
@@ -220,11 +239,8 @@ const login = async (req, res) => {
                 );
 
 
-            // =================================================
-            // Login Blocked
-            // =================================================
-
             if (
+                failedLogin &&
                 failedLogin.blocked
             ) {
 
@@ -243,10 +259,6 @@ const login = async (req, res) => {
             }
 
 
-            // =================================================
-            // Invalid Password
-            // =================================================
-
             return res.status(401).json({
 
                 success: false,
@@ -260,11 +272,7 @@ const login = async (req, res) => {
 
 
         // ==================================================
-        // 9. Password Correct
-        // ==================================================
-        //
-        // Clear previous failed-login counter.
-        //
+        // 9. Clear Failed Login Counter
         // ==================================================
 
         await clearFailedLogin(
@@ -273,12 +281,50 @@ const login = async (req, res) => {
 
 
         // ==================================================
-        // 10. Email Verification Check
+        // 10. Legacy bcrypt → Argon2id Migration
         // ==================================================
         //
-        // Email verification is the ONLY account
-        // requirement for login.
+        // IMPORTANT:
+        // Migration is intentionally retained.
         //
+        // Existing bcrypt users are migrated after
+        // successful authentication.
+        //
+        // New password storage = Argon2id.
+        //
+        // ==================================================
+
+        if (isBcryptPassword) {
+
+            const newPasswordHash =
+                await argon2.hash(
+                    password,
+                    ARGON2_OPTIONS
+                );
+
+
+            await db.query(
+
+                `
+                UPDATE merchants
+
+                SET password_hash = ?
+
+                WHERE merchant_id = ?
+                `,
+
+                [
+                    newPasswordHash,
+                    merchant.merchant_id
+                ]
+
+            );
+
+        }
+
+
+        // ==================================================
+        // 11. Email Verification
         // ==================================================
 
         if (
@@ -300,11 +346,7 @@ const login = async (req, res) => {
 
 
         // ==================================================
-        // 11. Generate Access Token
-        // ==================================================
-        //
-        // Centralized through jwt.util.js
-        //
+        // 12. Generate Access Token
         // ==================================================
 
         const accessToken =
@@ -315,16 +357,7 @@ const login = async (req, res) => {
 
 
         // ==================================================
-        // 12. Generate Refresh Token
-        // ==================================================
-        //
-        // Refresh token service handles:
-        //
-        // - secure random token
-        // - hashing
-        // - database storage
-        // - expiry
-        //
+        // 13. Generate Refresh Token
         // ==================================================
 
         const refreshTokenData =
@@ -334,57 +367,51 @@ const login = async (req, res) => {
                     merchant.merchant_id,
 
                 userAgent:
-                    req.headers["user-agent"]
-                    || null,
+                    req.headers["user-agent"] || null,
 
                 ipAddress:
-                    req.ip
-                    || null
+                    req.ip || null
 
             });
 
 
         // ==================================================
-        // 13. Login History
+        // 14. Login History
         // ==================================================
 
         await db.query(
 
             `
-                INSERT INTO login_history
-                (
-                    merchant_id,
-                    ip_address,
-                    user_agent,
-                    login_status
-                )
+            INSERT INTO login_history
+            (
+                merchant_id,
+                ip_address,
+                user_agent,
+                login_status
+            )
 
-                VALUES
-                (
-                    ?,
-                    ?,
-                    ?,
-                    'SUCCESS'
-                )
+            VALUES
+            (
+                ?,
+                ?,
+                ?,
+                'SUCCESS'
+            )
             `,
 
             [
-
                 merchant.merchant_id,
 
-                req.ip
-                    || null,
+                req.ip || null,
 
-                req.headers["user-agent"]
-                    || null
-
+                req.headers["user-agent"] || null
             ]
 
         );
 
 
         // ==================================================
-        // 14. Login Response
+        // 15. Success Response
         // ==================================================
 
         return res.status(200).json({
@@ -434,11 +461,10 @@ const login = async (req, res) => {
 
         });
 
-
     } catch (error) {
 
         // ==================================================
-        // Error Logging
+        // Production Server Logging
         // ==================================================
 
         console.error(
@@ -446,10 +472,6 @@ const login = async (req, res) => {
             error
         );
 
-
-        // ==================================================
-        // Production Response
-        // ==================================================
 
         return res.status(500).json({
 
@@ -464,9 +486,5 @@ const login = async (req, res) => {
 
 };
 
-
-// ==========================================================
-// Export
-// ==========================================================
 
 module.exports = login;

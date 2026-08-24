@@ -1,14 +1,19 @@
 const crypto = require("crypto");
-const bcrypt = require("bcrypt");
+const argon2 = require("argon2");
 
 const pool = require("../../../config/pool");
 
 
 // ==========================================================
-// Constants
+// Argon2 Configuration
 // ==========================================================
 
-const BCRYPT_ROUNDS = 12;
+const ARGON2_OPTIONS = {
+    type: argon2.argon2id,
+    memoryCost: 19456,
+    timeCost: 2,
+    parallelism: 1
+};
 
 
 // ==========================================================
@@ -45,10 +50,6 @@ const normalizePhone = (phone) => {
 // ==========================================================
 // Merchant Code Generator
 // ==========================================================
-//
-// Uses crypto instead of Math.random().
-//
-// ==========================================================
 
 const generateMerchantCode = () => {
 
@@ -63,13 +64,12 @@ const generateMerchantCode = () => {
 
 
 // ==========================================================
-// Signup Controller
+// Merchant Signup
 // ==========================================================
 
 const signup = async (req, res) => {
 
     let connection;
-
 
     try {
 
@@ -84,7 +84,7 @@ const signup = async (req, res) => {
             phone,
             website,
             password
-        } = req.body;
+        } = req.body || {};
 
 
         // ==================================================
@@ -136,7 +136,7 @@ const signup = async (req, res) => {
             );
 
         // IMPORTANT:
-        // Do NOT trim passwords.
+        // Never trim password.
         password =
             String(password);
 
@@ -436,13 +436,13 @@ const signup = async (req, res) => {
 
 
         // ==================================================
-        // Hash Password
+        // Hash Password With Argon2id
         // ==================================================
 
         const passwordHash =
-            await bcrypt.hash(
+            await argon2.hash(
                 password,
-                BCRYPT_ROUNDS
+                ARGON2_OPTIONS
             );
 
 
@@ -466,11 +466,6 @@ const signup = async (req, res) => {
 
         // ==================================================
         // Insert Merchant
-        // ==================================================
-        //
-        // Database UNIQUE constraints remain
-        // the final protection against duplicates.
-        //
         // ==================================================
 
         while (
@@ -648,7 +643,7 @@ const signup = async (req, res) => {
 
 
         // ==================================================
-        // Duplicate Email Race Condition
+        // Duplicate Entry
         // ==================================================
 
         if (
@@ -697,7 +692,7 @@ const signup = async (req, res) => {
 
 
         // ==================================================
-        // Log Internal Error
+        // Production Error Logging
         // ==================================================
 
         console.error(
@@ -705,10 +700,6 @@ const signup = async (req, res) => {
             error
         );
 
-
-        // ==================================================
-        // Safe Response
-        // ==================================================
 
         return res.status(500).json({
 
@@ -733,5 +724,4 @@ const signup = async (req, res) => {
 };
 
 
-module.exports =
-    signup;
+module.exports = signup;

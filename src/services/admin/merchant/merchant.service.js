@@ -1,4 +1,4 @@
-const bcrypt = require("bcrypt");
+const argon2 = require("argon2");
 const crypto = require("crypto");
 const net = require("net");
 
@@ -28,8 +28,12 @@ const {
 // ==========================================================
 // CONFIGURATION
 // ==========================================================
-
-const BCRYPT_ROUNDS = 12;
+const ARGON2_OPTIONS = {
+    type: argon2.argon2id,
+    memoryCost: 19456,
+    timeCost: 2,
+    parallelism: 1
+};
 
 const MAX_PAGE_SIZE = 100;
 
@@ -341,9 +345,9 @@ const createMerchant = async (
         // ==================================================
 
         const passwordHash =
-            await bcrypt.hash(
+            await argon2.hash(
                 password,
-                BCRYPT_ROUNDS
+                ARGON2_OPTIONS
             );
 
 

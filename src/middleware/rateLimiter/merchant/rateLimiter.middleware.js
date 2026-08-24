@@ -5,40 +5,104 @@ const redis = require("../../../config/redis");
 // Global API Rate Limiter
 // ==========================================================
 //
-// Default:
+// Production:
 // 100 requests / minute / IP
+//
+// Load Testing:
+// 500 requests / minute / IP
 //
 // ==========================================================
 
-const globalRateLimiter = async (req, res, next) => {
+
+const PRODUCTION_LIMIT = 100;
+
+const LOAD_TEST_LIMIT = 500;
+
+const WINDOW_SECONDS = 60;
+
+
+// ==========================================================
+// Global Rate Limiter
+// ==========================================================
+
+const globalRateLimiter = async (
+    req,
+    res,
+    next
+) => {
 
     try {
+
+        // ==================================================
+        // Get Client IP
+        // ==================================================
 
         const ip =
             req.ip ||
             req.headers["x-forwarded-for"] ||
             "unknown";
 
+
+        // ==================================================
+        // Redis Key
+        // ==================================================
+
         const key =
             `rate-limit:global:${ip}`;
 
+
+        // ==================================================
+        // Select Limit
+        // ==================================================
+
+        const isLoadTesting =
+            process.env.LOAD_TESTING === "true";
+
+
+        const maxRequests =
+            isLoadTesting
+                ? LOAD_TEST_LIMIT
+                : PRODUCTION_LIMIT;
+
+
+        // ==================================================
+        // Increment Counter
+        // ==================================================
+
         const current =
-            await redis.incr(key);
+            await redis.incr(
+                key
+            );
 
 
-        // First request → 60 sec expiry
+        // ==================================================
+        // First Request
+        // Start 60 Second Window
+        // ==================================================
+
         if (current === 1) {
+
             await redis.expire(
                 key,
-                60
+                WINDOW_SECONDS
             );
+
         }
 
 
-        if (current > 100) {
+        // ==================================================
+        // Limit Exceeded
+        // ==================================================
+
+        if (
+            current > maxRequests
+        ) {
 
             const ttl =
-                await redis.ttl(key);
+                await redis.ttl(
+                    key
+                );
+
 
             return res.status(429).json({
 
@@ -48,14 +112,21 @@ const globalRateLimiter = async (req, res, next) => {
                     "Too many requests. Please try again later.",
 
                 retryAfter:
-                    ttl > 0 ? ttl : 60
+                    ttl > 0
+                        ? ttl
+                        : WINDOW_SECONDS
 
             });
 
         }
 
 
-        next();
+        // ==================================================
+        // Continue
+        // ==================================================
+
+        return next();
+
 
     } catch (error) {
 
@@ -64,14 +135,20 @@ const globalRateLimiter = async (req, res, next) => {
             error
         );
 
-        // Rate limiter failure should not
-        // take the complete API down.
 
-        next();
+        // ==================================================
+        // Fail Open
+        // ==================================================
+
+        return next();
+
     }
+
 };
 
 
 module.exports = {
+
     globalRateLimiter
+
 };
