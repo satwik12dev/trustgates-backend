@@ -36,199 +36,226 @@ const {
 
 const getMonthlyReportService = async (filters = {}) => {
 
-    try {
+    const {
+        month,
+        year,
+        merchantId,
+        paymentMethod,
+        paymentType,
+        status
+    } = filters;
 
-        const {
+    const [
+        summary,
+        revenueTrend,
+        transactionTrend,
+        refundTrend
+    ] = await Promise.all([
 
+        getMonthlySummary({
             month,
             year,
             merchantId,
             paymentMethod,
-            paymentType
+            paymentType,
+            status
+        }),
 
-        } = filters || {};
-
-        // =====================================================
-        // Monthly Summary
-        // =====================================================
-
-        const summary = await getMonthlySummary({
-
+        getMonthlyRevenueTrend({
             month,
             year,
             merchantId,
             paymentMethod,
-            paymentType
+            paymentType,
+            status
+        }),
 
-        });
+        getMonthlyTransactionTrend({
+            month,
+            year,
+            merchantId,
+            paymentMethod,
+            paymentType,
+            status
+        }),
 
-        // =====================================================
-        // Revenue Trend
-        // =====================================================
+        getMonthlyRefundTrend({
+            month,
+            year,
+            merchantId
+        })
 
-        const revenueTrend =
-            await getMonthlyRevenueTrend({
+    ]);
 
-                month,
-                year,
-                merchantId
+    const totalTransactions =
+        Number(summary.totalTransactions || 0);
 
-            });
+    const successfulTransactions =
+        Number(summary.successfulTransactions || 0);
 
-        // =====================================================
-        // Transaction Trend
-        // =====================================================
+    const successRate =
+        totalTransactions === 0
+            ? 0
+            : Number(
+                (
+                    successfulTransactions /
+                    totalTransactions *
+                    100
+                ).toFixed(2)
+            );
 
-        const transactionTrend =
-            await getMonthlyTransactionTrend({
+    return {
 
-                month,
-                year,
-                merchantId
-
-            });
-
-        // =====================================================
-        // Refund Trend
-        // =====================================================
-
-        const refundTrend =
-            await getMonthlyRefundTrend({
-
-                month,
-                year,
-                merchantId
-
-            });
-
-        // =====================================================
-        // Dashboard Summary
-        // =====================================================
-
-        const totalTransactions =
-            Number(summary.totalTransactions || 0);
-
-        const successfulTransactions =
-            Number(summary.successfulTransactions || 0);
-
-        const successRate =
-            totalTransactions === 0
-                ? 0
-                : Number(
-                    (
-                        successfulTransactions /
-                        totalTransactions *
-                        100
-                    ).toFixed(2)
-                );
-
-        const dashboardCards = {
+        summary: {
 
             totalTransactions,
 
             successfulTransactions,
 
+            createdTransactions:
+                Number(
+                    summary.createdTransactions || 0
+                ),
+
             failedTransactions:
-                Number(summary.failedTransactions || 0),
+                Number(
+                    summary.failedTransactions || 0
+                ),
 
             pendingTransactions:
-                Number(summary.pendingTransactions || 0),
+                Number(
+                    summary.pendingTransactions || 0
+                ),
+
+            refundedTransactions:
+                Number(
+                    summary.refundedTransactions || 0
+                ),
 
             chargebackTransactions:
-                Number(summary.chargebackTransactions || 0),
+                Number(
+                    summary.chargebackTransactions || 0
+                ),
 
             totalRevenue:
-                Number(summary.totalRevenue || 0),
+                Number(
+                    summary.totalRevenue || 0
+                ),
 
             totalGatewayFee:
-                Number(summary.totalGatewayFee || 0),
+                Number(
+                    summary.totalGatewayFee || 0
+                ),
 
             averageTransactionAmount:
-                Number(summary.averageTransactionAmount || 0),
+                Number(
+                    summary.averageTransactionAmount || 0
+                ),
 
             successRate
 
-        };
+        },
 
-        // =====================================================
-        // Revenue Chart
-        // =====================================================
+        charts: {
 
-        const revenueChart = revenueTrend.map(item => ({
+            revenueChart:
+                revenueTrend.map(item => ({
 
-            day: Number(item.day),
+                    day:
+                        Number(item.day),
 
-            revenue: Number(item.revenue),
+                    revenue:
+                        Number(item.revenue || 0),
 
-            totalTransactions:
-                Number(item.totalTransactions)
+                    gatewayFee:
+                        Number(item.gatewayFee || 0),
 
-        }));
+                    totalTransactions:
+                        Number(
+                            item.totalTransactions || 0
+                        ),
 
-        // =====================================================
-        // Transaction Chart
-        // =====================================================
+                    successfulTransactions:
+                        Number(
+                            item.successfulTransactions || 0
+                        )
 
-        const transactionChart = transactionTrend.map(item => ({
+                })),
 
-            day: Number(item.day),
+            transactionChart:
+                transactionTrend.map(item => ({
 
-            totalTransactions:
-                Number(item.totalTransactions),
+                    day:
+                        Number(item.day),
 
-            successful:
-                Number(item.successful),
+                    totalTransactions:
+                        Number(
+                            item.totalTransactions || 0
+                        ),
 
-            failed:
-                Number(item.failed),
+                    successful:
+                        Number(
+                            item.successful || 0
+                        ),
 
-            pending:
-                Number(item.pending)
+                    created:
+                        Number(
+                            item.created || 0
+                        ),
 
-        }));
+                    failed:
+                        Number(
+                            item.failed || 0
+                        ),
 
-        // =====================================================
-        // Refund Chart
-        // =====================================================
+                    pending:
+                        Number(
+                            item.pending || 0
+                        ),
 
-        const refundChart = refundTrend.map(item => ({
+                    refunded:
+                        Number(
+                            item.refunded || 0
+                        ),
 
-            day: Number(item.day),
+                    chargeback:
+                        Number(
+                            item.chargeback || 0
+                        )
 
-            totalRefunds:
-                Number(item.totalRefunds),
+                })),
 
-            refundAmount:
-                Number(item.refundAmount)
+            refundChart:
+    refundTrend.map(item => ({
 
-        }));
+        day:
+            Number(item.day),
 
-        // =====================================================
-        // Response
-        // =====================================================
+        totalRefunds:
+            Number(
+                item.totalRefunds || 0
+            ),
 
-        return {
+        refundAmount:
+            Number(
+                item.refundAmount || 0
+            ),
 
-            summary: dashboardCards,
+        refundFee:
+            Number(
+                item.refundFee || 0
+            ),
 
-            charts: {
+        totalDebitAmount:
+            Number(
+                item.totalDebitAmount || 0
+            )
 
-                revenueChart,
+    }))
 
-                transactionChart,
+        }
 
-                refundChart
-
-            }
-
-        };
-
-    } catch (error) {
-
-        throw error;
-
-    }
-
+    };
 };
 
 /**
@@ -412,168 +439,6 @@ const getMonthlyDashboardService = async (filters) => {
 
 };
 
-/**
- * ============================================================
- * EXPORT MONTHLY REPORT
- * ============================================================
- */
-
-const exportMonthlyReportService = async (filters = {}) => {
-
-    try {
-
-        const {
-
-            month,
-
-            year,
-
-            merchantId,
-
-            format = "CSV"
-
-        } = filters || {};
-
-        if (!month || !year) {
-            throw new Error("Month and year are required to export monthly report.");
-        }
-
-        const startDate = `${year}-${String(month).padStart(2, "0")}-01`;
-
-        const lastDay = new Date(year, month, 0).getDate();
-
-        const endDate =
-            `${year}-${String(month).padStart(2, "0")}-${lastDay}`;
-
-        const records = await getExportTransactions({
-
-            startDate,
-
-            endDate,
-
-            merchantId
-
-        });
-
-        if (!records.length) {
-
-            return {
-
-                success: false,
-
-                message: "No transactions found."
-
-            };
-
-        }
-
-        const headers = [
-
-            { id: "transaction_id", title: "Transaction ID" },
-
-            { id: "order_id", title: "Order ID" },
-
-            { id: "merchant_name", title: "Merchant" },
-
-            { id: "business_name", title: "Business" },
-
-            { id: "customer_name", title: "Customer" },
-
-            { id: "customer_email", title: "Customer Email" },
-
-            { id: "amount", title: "Amount" },
-
-            { id: "gateway_fee", title: "Gateway Fee" },
-
-            { id: "currency", title: "Currency" },
-
-            { id: "payment_method", title: "Payment Method" },
-
-            { id: "payment_type", title: "Payment Type" },
-
-            { id: "status", title: "Status" },
-
-            { id: "provider_payment_id", title: "Gateway Payment ID" },
-
-            { id: "created_at", title: "Created At" }
-
-        ];
-
-        switch (format.toUpperCase()) {
-
-            case "CSV":
-
-                return await exportCSV({
-
-                    fileName: `monthly_report_${month}_${year}`,
-
-                    headers,
-
-                    records
-
-                });
-
-            case "EXCEL":
-
-                return await exportExcel({
-
-                    fileName: `monthly_report_${month}_${year}`,
-
-                    sheetName: "Monthly Report",
-
-                    columns: headers.map(header => ({
-
-                        header: header.title,
-
-                        key: header.id
-
-                    })),
-
-                    records
-
-                });
-
-            case "PDF":
-
-                return await exportPDF({
-
-                    fileName: `monthly_report_${month}_${year}`,
-
-                    title: `Monthly Report (${month}/${year})`,
-
-                    headers,
-
-                    records
-
-                });
-
-            default:
-
-                throw new Error("Invalid export format.");
-
-        }
-
-    } catch (error) {
-
-        throw error;
-
-    }
-
-};
-
-
-
-/**
- * ============================================================
- * DOWNLOAD MONTHLY REPORT
- * ============================================================
- */
-
-const downloadMonthlyReportService = async (filters) => {
-
-    return await exportMonthlyReportService(filters);
-
-};
 
 
 
@@ -594,9 +459,5 @@ module.exports = {
     getMerchantPerformanceService,
 
     getMonthlyDashboardService,
-
-    exportMonthlyReportService,
-
-    downloadMonthlyReportService
 
 };

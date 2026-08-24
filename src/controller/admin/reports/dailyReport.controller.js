@@ -9,15 +9,6 @@ const {
 } = require("../../../services/admin/reports/dailyReport.service");
 
 
-/**
- * ============================================================
- * VALIDATION
- * ============================================================
- */
-
-/**
- * Common Daily Report Validation
- */
 const dailyReportValidation = Joi.object({
 
     date: Joi.date()
@@ -42,6 +33,7 @@ const dailyReportValidation = Joi.object({
             "SUCCESS",
             "FAILED",
             "PENDING",
+            "CREATED",
             "REFUNDED",
             "CHARGEBACK"
         )
@@ -65,27 +57,45 @@ const dailyReportValidation = Joi.object({
         }),
 
     paymentType: Joi.string()
-        .optional(),
+        .valid(
+            "PAYIN",
+            "PAYOUT"
+        )
+        .optional()
+        .messages({
+            "any.only": "Invalid payment type."
+        }),
 
     currency: Joi.string()
         .uppercase()
         .length(3)
         .optional()
         .messages({
-            "string.length": "Currency must be exactly 3 characters."
+            "string.length":
+                "Currency must be exactly 3 characters."
         }),
 
     search: Joi.string()
-        .allow("", null)
-        .optional(),
+        .trim()
+        .max(100)
+        .allow("")
+        .optional()
+        .messages({
+            "string.max":
+                "Search cannot exceed 100 characters."
+        }),
 
     page: Joi.number()
         .integer()
         .min(1)
         .default(1)
         .messages({
-            "number.integer": "Page must be an integer.",
-            "number.min": "Page must be at least 1."
+            "number.base":
+                "Page must be a number.",
+            "number.integer":
+                "Page must be an integer.",
+            "number.min":
+                "Page must be at least 1."
         }),
 
     limit: Joi.number()
@@ -94,17 +104,23 @@ const dailyReportValidation = Joi.object({
         .max(100)
         .default(10)
         .messages({
-            "number.integer": "Limit must be an integer.",
-            "number.min": "Limit must be at least 1.",
-            "number.max": "Limit cannot exceed 100."
+            "number.base":
+                "Limit must be a number.",
+            "number.integer":
+                "Limit must be an integer.",
+            "number.min":
+                "Limit must be at least 1.",
+            "number.max":
+                "Limit cannot exceed 100."
         })
 
+}).options({
+    allowUnknown: false,
+    abortEarly: true,
+    convert: true
 });
 
 
-/**
- * Export Daily Report Validation
- */
 const exportDailyReportValidation = Joi.object({
 
     date: Joi.date()
@@ -119,36 +135,49 @@ const exportDailyReportValidation = Joi.object({
         .positive()
         .optional()
         .messages({
-            "number.base": "Merchant ID must be a number.",
-            "number.integer": "Merchant ID must be an integer.",
-            "number.positive": "Merchant ID must be positive."
+            "number.base":
+                "Merchant ID must be a number.",
+            "number.integer":
+                "Merchant ID must be an integer.",
+            "number.positive":
+                "Merchant ID must be positive."
         }),
 
     format: Joi.string()
-        .valid("CSV", "EXCEL", "PDF")
-        .required()
         .uppercase()
+        .valid(
+            "CSV",
+            "EXCEL",
+            "PDF"
+        )
+        .required()
         .messages({
-            "any.only": "Format must be CSV, EXCEL, or PDF.",
-            "any.required": "Export format is required."
+            "string.uppercase":
+                "Format must be uppercase.",
+            "any.only":
+                "Format must be CSV, EXCEL, or PDF.",
+            "any.required":
+                "Export format is required."
         })
 
+}).options({
+    allowUnknown: false,
+    abortEarly: true,
+    convert: true
 });
 
-
-/**
- * ============================================================
- * GET DAILY REPORT
- * GET /admin/reports/daily
- * ============================================================
- */
 
 const getDailyReport = async (req, res) => {
 
     try {
 
-        const { error, value } =
-            dailyReportValidation.validate(req.query);
+        const {
+            error,
+            value
+        } =
+            dailyReportValidation.validate(
+                req.query
+            );
 
         if (error) {
 
@@ -156,7 +185,8 @@ const getDailyReport = async (req, res) => {
 
                 success: false,
 
-                message: error.details[0].message
+                message:
+                    error.details[0].message
 
             });
 
@@ -169,23 +199,30 @@ const getDailyReport = async (req, res) => {
 
             success: true,
 
-            message: "Daily report fetched successfully.",
+            message:
+                "Daily report fetched successfully.",
 
-            data: report
+            data:
+                report
 
         });
 
     } catch (error) {
 
-        console.error("Daily Report Error:", error);
+        console.error(
+            "Daily Report Error:",
+            error
+        );
 
         return res.status(500).json({
 
             success: false,
 
-            message: "Failed to fetch daily report.",
+            message:
+                "Failed to fetch daily report.",
 
-            error: error.message
+            error:
+                error.message
 
         });
 
@@ -194,19 +231,20 @@ const getDailyReport = async (req, res) => {
 };
 
 
-/**
- * ============================================================
- * GET DAILY TRANSACTIONS
- * GET /admin/reports/daily/transactions
- * ============================================================
- */
-
-const getDailyTransactions = async (req, res) => {
+const getDailyTransactions = async (
+    req,
+    res
+) => {
 
     try {
 
-        const { error, value } =
-            dailyReportValidation.validate(req.query);
+        const {
+            error,
+            value
+        } =
+            dailyReportValidation.validate(
+                req.query
+            );
 
         if (error) {
 
@@ -214,36 +252,46 @@ const getDailyTransactions = async (req, res) => {
 
                 success: false,
 
-                message: error.details[0].message
+                message:
+                    error.details[0].message
 
             });
 
         }
 
         const transactions =
-            await getDailyTransactionsService(value);
+            await getDailyTransactionsService(
+                value
+            );
 
         return res.status(200).json({
 
             success: true,
 
-            message: "Daily transactions fetched successfully.",
+            message:
+                "Daily transactions fetched successfully.",
 
-            data: transactions
+            data:
+                transactions
 
         });
 
     } catch (error) {
 
-        console.error("Daily Transactions Error:", error);
+        console.error(
+            "Daily Transactions Error:",
+            error
+        );
 
         return res.status(500).json({
 
             success: false,
 
-            message: "Failed to fetch daily transactions.",
+            message:
+                "Failed to fetch daily transactions.",
 
-            error: error.message
+            error:
+                error.message
 
         });
 
@@ -252,19 +300,20 @@ const getDailyTransactions = async (req, res) => {
 };
 
 
-/**
- * ============================================================
- * SEARCH DAILY TRANSACTIONS
- * GET /admin/reports/daily/search
- * ============================================================
- */
-
-const searchDailyTransactions = async (req, res) => {
+const searchDailyTransactions = async (
+    req,
+    res
+) => {
 
     try {
 
-        const { error, value } =
-            dailyReportValidation.validate(req.query);
+        const {
+            error,
+            value
+        } =
+            dailyReportValidation.validate(
+                req.query
+            );
 
         if (error) {
 
@@ -272,36 +321,46 @@ const searchDailyTransactions = async (req, res) => {
 
                 success: false,
 
-                message: error.details[0].message
+                message:
+                    error.details[0].message
 
             });
 
         }
 
         const result =
-            await searchDailyTransactionsService(value);
+            await searchDailyTransactionsService(
+                value
+            );
 
         return res.status(200).json({
 
             success: true,
 
-            message: "Daily transactions fetched successfully.",
+            message:
+                "Daily transactions fetched successfully.",
 
-            data: result
+            data:
+                result
 
         });
 
     } catch (error) {
 
-        console.error("Search Daily Transactions Error:", error);
+        console.error(
+            "Search Daily Transactions Error:",
+            error
+        );
 
         return res.status(500).json({
 
             success: false,
 
-            message: "Failed to search daily transactions.",
+            message:
+                "Failed to search daily transactions.",
 
-            error: error.message
+            error:
+                error.message
 
         });
 
@@ -310,19 +369,20 @@ const searchDailyTransactions = async (req, res) => {
 };
 
 
-/**
- * ============================================================
- * FILTER DAILY TRANSACTIONS
- * GET /admin/reports/daily/filter
- * ============================================================
- */
-
-const filterDailyTransactions = async (req, res) => {
+const filterDailyTransactions = async (
+    req,
+    res
+) => {
 
     try {
 
-        const { error, value } =
-            dailyReportValidation.validate(req.query);
+        const {
+            error,
+            value
+        } =
+            dailyReportValidation.validate(
+                req.query
+            );
 
         if (error) {
 
@@ -330,36 +390,46 @@ const filterDailyTransactions = async (req, res) => {
 
                 success: false,
 
-                message: error.details[0].message
+                message:
+                    error.details[0].message
 
             });
 
         }
 
         const result =
-            await filterDailyTransactionsService(value);
+            await filterDailyTransactionsService(
+                value
+            );
 
         return res.status(200).json({
 
             success: true,
 
-            message: "Daily transactions fetched successfully.",
+            message:
+                "Daily transactions fetched successfully.",
 
-            data: result
+            data:
+                result
 
         });
 
     } catch (error) {
 
-        console.error("Filter Daily Transactions Error:", error);
+        console.error(
+            "Filter Daily Transactions Error:",
+            error
+        );
 
         return res.status(500).json({
 
             success: false,
 
-            message: "Failed to filter daily transactions.",
+            message:
+                "Failed to filter daily transactions.",
 
-            error: error.message
+            error:
+                error.message
 
         });
 
@@ -368,19 +438,20 @@ const filterDailyTransactions = async (req, res) => {
 };
 
 
-/**
- * ============================================================
- * EXPORT DAILY REPORT
- * POST /admin/reports/daily/export
- * ============================================================
- */
-
-const exportDailyReport = async (req, res) => {
+const exportDailyReport = async (
+    req,
+    res
+) => {
 
     try {
 
-        const { error, value } =
-            exportDailyReportValidation.validate(req.body);
+        const {
+            error,
+            value
+        } =
+            exportDailyReportValidation.validate(
+                req.body
+            );
 
         if (error) {
 
@@ -388,36 +459,46 @@ const exportDailyReport = async (req, res) => {
 
                 success: false,
 
-                message: error.details[0].message
+                message:
+                    error.details[0].message
 
             });
 
         }
 
         const result =
-            await exportDailyReportService(value);
+            await exportDailyReportService(
+                value
+            );
 
         return res.status(200).json({
 
             success: true,
 
-            message: "Daily report exported successfully.",
+            message:
+                "Daily report exported successfully.",
 
-            data: result
+            data:
+                result
 
         });
 
     } catch (error) {
 
-        console.error("Export Daily Report Error:", error);
+        console.error(
+            "Export Daily Report Error:",
+            error
+        );
 
         return res.status(500).json({
 
             success: false,
 
-            message: "Failed to export daily report.",
+            message:
+                "Failed to export daily report.",
 
-            error: error.message
+            error:
+                error.message
 
         });
 
@@ -425,12 +506,6 @@ const exportDailyReport = async (req, res) => {
 
 };
 
-
-/**
- * ============================================================
- * EXPORTS
- * ============================================================
- */
 
 module.exports = {
 

@@ -17,6 +17,14 @@ const {
     exportPDF
 } = require("../../../utils/admin/reports/pdfExport");
 
+// ============================================================
+// MONTHLY REPORT SERVICES
+// ============================================================
+const {
+    getMonthlyReportService,
+    getMonthlyDashboardService
+} = require("./monthlyReport.service");
+
 
 /**
  * ============================================================
@@ -196,49 +204,113 @@ const REFUND_HEADERS = [
  * COMMON SETTLEMENT HEADERS
  * ============================================================
  */
+
 const SETTLEMENT_HEADERS = [
 
-    { id: "settlement_id", title: "Settlement ID" },
+    {
+        id: "settlement_id",
+        title: "Settlement ID"
+    },
 
-    { id: "transaction_id", title: "Transaction ID" },
+    {
+        id: "transaction_id",
+        title: "Transaction ID"
+    },
 
-    { id: "order_id", title: "Order ID" },
+    {
+        id: "order_id",
+        title: "Order ID"
+    },
 
-    { id: "merchant_id", title: "Merchant ID" },
+    {
+        id: "merchant_id",
+        title: "Merchant ID"
+    },
 
-    { id: "merchant_name", title: "Merchant Name" },
+    {
+        id: "merchant_name",
+        title: "Merchant Name"
+    },
 
-    { id: "business_name", title: "Business Name" },
+    {
+        id: "business_name",
+        title: "Business Name"
+    },
 
-    { id: "customer_name", title: "Customer Name" },
+    {
+        id: "customer_name",
+        title: "Customer Name"
+    },
 
-    { id: "customer_email", title: "Customer Email" },
+    {
+        id: "customer_email",
+        title: "Customer Email"
+    },
 
-    { id: "payment_method", title: "Payment Method" },
+    {
+        id: "payment_method",
+        title: "Payment Method"
+    },
 
-    { id: "payment_type", title: "Payment Type" },
+    {
+        id: "payment_type",
+        title: "Payment Type"
+    },
 
-    { id: "currency", title: "Currency" },
+    {
+        id: "currency",
+        title: "Currency"
+    },
 
-    { id: "transaction_amount", title: "Transaction Amount" },
+    {
+        id: "transaction_amount",
+        title: "Transaction Amount"
+    },
 
-    { id: "gross_amount", title: "Gross Amount" },
+    {
+        id: "gross_amount",
+        title: "Gross Amount"
+    },
 
-    { id: "gateway_fee", title: "Gateway Fee" },
+    {
+        id: "gateway_fee",
+        title: "Gateway Fee"
+    },
 
-    { id: "gst", title: "GST" },
+    {
+        id: "gst",
+        title: "GST"
+    },
 
-    { id: "tds", title: "TDS" },
+    {
+        id: "tds",
+        title: "TDS"
+    },
 
-    { id: "net_amount", title: "Net Amount" },
+    {
+        id: "net_amount",
+        title: "Net Amount"
+    },
 
-    { id: "settlement_status", title: "Settlement Status" },
+    {
+        id: "settlement_status",
+        title: "Settlement Status"
+    },
 
-    { id: "settlement_date", title: "Settlement Date" },
+    {
+        id: "settlement_date",
+        title: "Settlement Date"
+    },
 
-    { id: "created_at", title: "Created At" }
+    {
+        id: "created_at",
+        title: "Created At"
+    }
 
 ];
+
+
+
 /**
  * ============================================================
  * CHARGEBACK HEADERS
@@ -305,6 +377,7 @@ const CHARGEBACK_HEADERS = [
 ];
 
 
+
 /**
  * ============================================================
  * BUILD EXCEL COLUMNS
@@ -319,7 +392,11 @@ const buildExcelColumns = (headers) => {
 
         key: header.id,
 
-        width: Math.max(header.title.length + 5, 20)
+        width:
+            Math.max(
+                header.title.length + 5,
+                20
+            )
 
     }));
 
@@ -337,15 +414,26 @@ const validateExportFormat = (format) => {
 
     if (!format) {
 
-        throw new Error("Export format is required.");
+        throw new Error(
+            "Export format is required."
+        );
 
     }
 
-    const exportFormat = format.toUpperCase();
+    const exportFormat =
+        String(format).toUpperCase();
 
-    if (!Object.values(EXPORT_FORMATS).includes(exportFormat)) {
+    if (
+        !Object.values(
+            EXPORT_FORMATS
+        ).includes(
+            exportFormat
+        )
+    ) {
 
-        throw new Error("Unsupported export format.");
+        throw new Error(
+            "Unsupported export format."
+        );
 
     }
 
@@ -366,19 +454,26 @@ const buildFileName = ({
     merchantId = null
 }) => {
 
-    const timestamp = new Date()
-        .toISOString()
-        .replace(/[:.]/g, "-");
+    const timestamp =
+        new Date()
+            .toISOString()
+            .replace(
+                /[:.]/g,
+                "-"
+            );
 
-    let fileName = reportType.toLowerCase();
+    let fileName =
+        reportType.toLowerCase();
 
     if (merchantId) {
 
-        fileName += `_merchant_${merchantId}`;
+        fileName +=
+            `_merchant_${merchantId}`;
 
     }
 
-    fileName += `_${timestamp}`;
+    fileName +=
+        `_${timestamp}`;
 
     return fileName;
 
@@ -398,13 +493,17 @@ const formatExportResponse = (result) => {
 
         success: true,
 
-        message: "Report exported successfully.",
+        message:
+            "Report exported successfully.",
 
-        fileName: result.fileName,
+        fileName:
+            result.fileName,
 
-        filePath: result.filePath,
+        filePath:
+            result.filePath,
 
-        downloadPath: result.downloadPath
+        downloadPath:
+            result.downloadPath
 
     };
 
@@ -418,7 +517,9 @@ const formatExportResponse = (result) => {
  * ============================================================
  */
 
-const getHeadersByReportType = (reportType) => {
+const getHeadersByReportType = (
+    reportType
+) => {
 
     switch (reportType) {
 
@@ -441,13 +542,18 @@ const getHeadersByReportType = (reportType) => {
     }
 
 };
+
+
+
 /**
  * ============================================================
  * EXPORT TRANSACTIONS
  * ============================================================
  */
 
-const exportTransactionsService = async (filters) => {
+const exportTransactionsService = async (
+    filters
+) => {
 
     try {
 
@@ -461,20 +567,23 @@ const exportTransactionsService = async (filters) => {
 
             format,
 
-            reportType = REPORT_TYPES.TRANSACTIONS
+            reportType =
+                REPORT_TYPES.TRANSACTIONS
 
         } = filters;
 
-        // ============================================
-        // Validate Format
-        // ============================================
+        // =====================================================
+        // VALIDATE FORMAT
+        // =====================================================
 
         const exportFormat =
-            validateExportFormat(format);
+            validateExportFormat(
+                format
+            );
 
-        // ============================================
-        // Fetch Records
-        // ============================================
+        // =====================================================
+        // FETCH RECORDS
+        // =====================================================
 
         const records =
             await getExportTransactions({
@@ -487,24 +596,30 @@ const exportTransactionsService = async (filters) => {
 
             });
 
-        if (!records.length) {
+        if (
+            !records ||
+            !records.length
+        ) {
 
             return {
 
                 success: false,
 
-                message: "No records found."
+                message:
+                    "No records found."
 
             };
 
         }
 
-        // ============================================
-        // Common Config
-        // ============================================
+        // =====================================================
+        // COMMON CONFIG
+        // =====================================================
 
         const headers =
-            getHeadersByReportType(reportType);
+            getHeadersByReportType(
+                reportType
+            );
 
         const fileName =
             buildFileName({
@@ -515,74 +630,96 @@ const exportTransactionsService = async (filters) => {
 
             });
 
-        // ============================================
-        // CSV EXPORT
-        // ============================================
+        // =====================================================
+        // CSV
+        // =====================================================
 
-        if (exportFormat === EXPORT_FORMATS.CSV) {
+        if (
+            exportFormat ===
+            EXPORT_FORMATS.CSV
+        ) {
 
-            const result = await exportCSV({
+            const result =
+                await exportCSV({
 
-                fileName,
+                    fileName,
 
-                headers,
+                    headers,
 
-                records
+                    records
 
-            });
+                });
 
-            return formatExportResponse(result);
-
-        }
-                // ============================================
-        // EXCEL EXPORT
-        // ============================================
-
-        if (exportFormat === EXPORT_FORMATS.EXCEL) {
-
-            const result = await exportExcel({
-
-                fileName,
-
-                sheetName: reportType,
-
-                columns: buildExcelColumns(headers),
-
-                records
-
-            });
-
-            return formatExportResponse(result);
+            return formatExportResponse(
+                result
+            );
 
         }
 
-        // ============================================
-        // PDF EXPORT
-        // ============================================
+        // =====================================================
+        // EXCEL
+        // =====================================================
 
-        if (exportFormat === EXPORT_FORMATS.PDF) {
+        if (
+            exportFormat ===
+            EXPORT_FORMATS.EXCEL
+        ) {
 
-            const result = await exportPDF({
+            const result =
+                await exportExcel({
 
-                fileName,
+                    fileName,
 
-                title: `${reportType} Report`,
+                    sheetName:
+                        reportType,
 
-                headers,
+                    columns:
+                        buildExcelColumns(
+                            headers
+                        ),
 
-                records
+                    records
 
-            });
+                });
 
-            return formatExportResponse(result);
+            return formatExportResponse(
+                result
+            );
 
         }
 
-        // ============================================
-        // INVALID FORMAT
-        // ============================================
+        // =====================================================
+        // PDF
+        // =====================================================
 
-        throw new Error("Unsupported export format.");
+        if (
+            exportFormat ===
+            EXPORT_FORMATS.PDF
+        ) {
+
+            const result =
+                await exportPDF({
+
+                    fileName,
+
+                    title:
+                        `${reportType} Report`,
+
+                    headers,
+
+                    records
+
+                });
+
+            return formatExportResponse(
+                result
+            );
+
+        }
+
+        throw new Error(
+            "Unsupported export format."
+        );
 
     } catch (error) {
 
@@ -592,13 +729,17 @@ const exportTransactionsService = async (filters) => {
 
 };
 
+
+
 /**
  * ============================================================
  * EXPORT DAILY REPORT
  * ============================================================
  */
 
-const exportDailyReportService = async (filters) => {
+const exportDailyReportService = async (
+    filters
+) => {
 
     try {
 
@@ -614,15 +755,18 @@ const exportDailyReportService = async (filters) => {
 
         return await exportTransactionsService({
 
-            startDate: date,
+            startDate:
+                date,
 
-            endDate: date,
+            endDate:
+                date,
 
             merchantId,
 
             format,
 
-            reportType: REPORT_TYPES.DAILY
+            reportType:
+                REPORT_TYPES.DAILY
 
         });
 
@@ -639,10 +783,27 @@ const exportDailyReportService = async (filters) => {
 /**
  * ============================================================
  * EXPORT MONTHLY REPORT
+ *
+ * PDF:
+ *
+ * 1. Monthly Summary
+ * 2. Daily Revenue
+ * 3. Daily Transaction Status
+ * 4. Daily Refund Summary
+ * 5. Top Merchants
+ * 6. Merchant Performance
+ * 7. ALL Monthly Transactions
+ *
+ * CSV / EXCEL:
+ *
+ * Monthly transaction export
+ *
  * ============================================================
  */
 
-const exportMonthlyReportService = async (filters = {}) => {
+const exportMonthlyReportService = async (
+    filters = {}
+) => {
 
     try {
 
@@ -656,30 +817,343 @@ const exportMonthlyReportService = async (filters = {}) => {
 
             format
 
-        } = filters || {};
+        } = filters;
+
+        // =====================================================
+        // VALIDATE MONTH / YEAR
+        // =====================================================
+
+        if (
+            month === undefined ||
+            month === null ||
+            month === ""
+        ) {
+
+            throw new Error(
+                "Month and year are required."
+            );
+
+        }
+
+        if (
+            year === undefined ||
+            year === null ||
+            year === ""
+        ) {
+
+            throw new Error(
+                "Month and year are required."
+            );
+
+        }
+
+        const numericMonth =
+            Number(month);
+
+        const numericYear =
+            Number(year);
+
+        if (
+            !Number.isInteger(
+                numericMonth
+            ) ||
+            numericMonth < 1 ||
+            numericMonth > 12
+        ) {
+
+            throw new Error(
+                "Invalid month."
+            );
+
+        }
+
+        if (
+            !Number.isInteger(
+                numericYear
+            ) ||
+            numericYear < 2000 ||
+            numericYear > 2100
+        ) {
+
+            throw new Error(
+                "Invalid year."
+            );
+
+        }
+
+        // =====================================================
+        // VALIDATE FORMAT
+        // =====================================================
+
+        const exportFormat =
+            validateExportFormat(
+                format
+            );
+
+        // =====================================================
+        // BUILD MONTH RANGE
+        // =====================================================
+
+        const paddedMonth =
+            String(
+                numericMonth
+            ).padStart(
+                2,
+                "0"
+            );
 
         const startDate =
-            `${year}-${String(month).padStart(2, "0")}-01`;
+            `${numericYear}-${paddedMonth}-01`;
 
         const lastDay =
-            new Date(year, month, 0).getDate();
+            new Date(
+                numericYear,
+                numericMonth,
+                0
+            ).getDate();
 
         const endDate =
-            `${year}-${String(month).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
+            `${numericYear}-${paddedMonth}-${String(
+                lastDay
+            ).padStart(
+                2,
+                "0"
+            )}`;
 
-        return await exportTransactionsService({
+        // =====================================================
+        // FETCH MONTHLY ANALYTICS
+        //
+        // SAME DATA USED BY:
+        // GET /admin/report/monthly
+        // =====================================================
 
-            startDate,
+        const [
+            report,
+            dashboard
+        ] = await Promise.all([
 
-            endDate,
+            getMonthlyReportService({
 
-            merchantId,
+                month:
+                    numericMonth,
 
-            format,
+                year:
+                    numericYear,
 
-            reportType: REPORT_TYPES.MONTHLY
+                merchantId
 
-        });
+            }),
+
+            getMonthlyDashboardService({
+
+                month:
+                    numericMonth,
+
+                year:
+                    numericYear,
+
+                merchantId
+
+            })
+
+        ]);
+
+        // =====================================================
+        // FETCH ALL MONTHLY TRANSACTIONS
+        //
+        // IMPORTANT:
+        // PDF MUST RECEIVE THESE RECORDS.
+        // =====================================================
+
+        const records =
+            await getExportTransactions({
+
+                startDate,
+
+                endDate,
+
+                merchantId
+
+            });
+
+        // =====================================================
+        // NO DATA CHECK
+        // =====================================================
+
+        const hasReportData =
+            report &&
+            report.summary;
+
+        const hasTransactionData =
+            Array.isArray(records) &&
+            records.length > 0;
+
+        if (
+            !hasReportData &&
+            !hasTransactionData
+        ) {
+
+            return {
+
+                success: false,
+
+                message:
+                    "No monthly records found."
+
+            };
+
+        }
+
+        // =====================================================
+        // FILE NAME
+        // =====================================================
+
+        const fileName =
+            `monthly_report_${numericYear}_${paddedMonth}`;
+
+        // =====================================================
+        // =====================================================
+        // PDF MONTHLY REPORT
+        // =====================================================
+        // =====================================================
+
+        if (
+            exportFormat ===
+            EXPORT_FORMATS.PDF
+        ) {
+
+            const result =
+                await exportPDF({
+
+                    fileName,
+
+                    title:
+                        `Monthly Report (${paddedMonth}/${numericYear})`,
+
+                    reportType:
+                        REPORT_TYPES.MONTHLY,
+
+                    // -----------------------------------------
+                    // MONTHLY ANALYTICS
+                    // -----------------------------------------
+
+                    report,
+
+                    // -----------------------------------------
+                    // TOP MERCHANTS + PERFORMANCE
+                    // -----------------------------------------
+
+                    dashboard,
+
+                    // -----------------------------------------
+                    // ALL MONTH TRANSACTIONS
+                    // -----------------------------------------
+
+                    records,
+
+                    headers:
+                        TRANSACTION_HEADERS,
+
+                    // -----------------------------------------
+                    // OPTIONAL MERCHANT FILTER
+                    // -----------------------------------------
+
+                    merchantId,
+
+                    // -----------------------------------------
+                    // HEADER FILTER INFORMATION
+                    // -----------------------------------------
+
+                    filters: {
+
+                        month:
+                            paddedMonth,
+
+                        year:
+                            numericYear,
+
+                        ...(merchantId
+                            ? {
+                                merchantId
+                            }
+                            : {})
+
+                    }
+
+                });
+
+            return formatExportResponse(
+                result
+            );
+
+        }
+
+        // =====================================================
+        // =====================================================
+        // CSV MONTHLY TRANSACTION EXPORT
+        // =====================================================
+        // =====================================================
+
+        if (
+            exportFormat ===
+            EXPORT_FORMATS.CSV
+        ) {
+
+            const result =
+                await exportCSV({
+
+                    fileName,
+
+                    headers:
+                        TRANSACTION_HEADERS,
+
+                    records
+
+                });
+
+            return formatExportResponse(
+                result
+            );
+
+        }
+
+        // =====================================================
+        // =====================================================
+        // EXCEL MONTHLY TRANSACTION EXPORT
+        // =====================================================
+        // =====================================================
+
+        if (
+            exportFormat ===
+            EXPORT_FORMATS.EXCEL
+        ) {
+
+            const result =
+                await exportExcel({
+
+                    fileName,
+
+                    sheetName:
+                        "Monthly Transactions",
+
+                    columns:
+                        buildExcelColumns(
+                            TRANSACTION_HEADERS
+                        ),
+
+                    records
+
+                });
+
+            return formatExportResponse(
+                result
+            );
+
+        }
+
+        throw new Error(
+            "Unsupported export format."
+        );
 
     } catch (error) {
 
@@ -697,7 +1171,9 @@ const exportMonthlyReportService = async (filters = {}) => {
  * ============================================================
  */
 
-const exportMerchantReportService = async (filters) => {
+const exportMerchantReportService = async (
+    filters
+) => {
 
     try {
 
@@ -723,7 +1199,8 @@ const exportMerchantReportService = async (filters) => {
 
             format,
 
-            reportType: REPORT_TYPES.MERCHANT
+            reportType:
+                REPORT_TYPES.MERCHANT
 
         });
 
@@ -734,13 +1211,18 @@ const exportMerchantReportService = async (filters) => {
     }
 
 };
+
+
+
 /**
  * ============================================================
  * EXPORT REFUND REPORT
  * ============================================================
  */
 
-const exportRefundReportService = async (filters) => {
+const exportRefundReportService = async (
+    filters
+) => {
 
     try {
 
@@ -759,45 +1241,61 @@ const exportRefundReportService = async (filters) => {
         } = filters;
 
         const exportFormat =
-            validateExportFormat(format);
+            validateExportFormat(
+                format
+            );
 
-        const records = await getRefundReport({
+        const records =
+            await getRefundReport({
 
-            startDate,
+                startDate,
 
-            endDate,
+                endDate,
 
-            merchantId,
+                merchantId,
 
-            refundStatus,
+                refundStatus,
 
-            page: 1,
+                page: 1,
 
-            limit: 1000000
+                limit: 1000000
 
-        });
+            });
 
-        if (!records.length) {
+        if (
+            !records ||
+            !records.length
+        ) {
 
             return {
 
                 success: false,
 
-                message: "No refund records found."
+                message:
+                    "No refund records found."
 
             };
 
         }
 
-        const fileName = buildFileName({
+        const fileName =
+            buildFileName({
 
-            reportType: REPORT_TYPES.REFUND,
+                reportType:
+                    REPORT_TYPES.REFUND,
 
-            merchantId
+                merchantId
 
-        });
+            });
 
-        if (exportFormat === EXPORT_FORMATS.CSV) {
+        // =====================================================
+        // CSV
+        // =====================================================
+
+        if (
+            exportFormat ===
+            EXPORT_FORMATS.CSV
+        ) {
 
             return formatExportResponse(
 
@@ -805,7 +1303,8 @@ const exportRefundReportService = async (filters) => {
 
                     fileName,
 
-                    headers: REFUND_HEADERS,
+                    headers:
+                        REFUND_HEADERS,
 
                     records
 
@@ -815,7 +1314,14 @@ const exportRefundReportService = async (filters) => {
 
         }
 
-        if (exportFormat === EXPORT_FORMATS.EXCEL) {
+        // =====================================================
+        // EXCEL
+        // =====================================================
+
+        if (
+            exportFormat ===
+            EXPORT_FORMATS.EXCEL
+        ) {
 
             return formatExportResponse(
 
@@ -823,9 +1329,13 @@ const exportRefundReportService = async (filters) => {
 
                     fileName,
 
-                    sheetName: "Refund Report",
+                    sheetName:
+                        "Refund Report",
 
-                    columns: buildExcelColumns(REFUND_HEADERS),
+                    columns:
+                        buildExcelColumns(
+                            REFUND_HEADERS
+                        ),
 
                     records
 
@@ -835,15 +1345,21 @@ const exportRefundReportService = async (filters) => {
 
         }
 
+        // =====================================================
+        // PDF
+        // =====================================================
+
         return formatExportResponse(
 
             await exportPDF({
 
                 fileName,
 
-                title: "Refund Report",
+                title:
+                    "Refund Report",
 
-                headers: REFUND_HEADERS,
+                headers:
+                    REFUND_HEADERS,
 
                 records
 
@@ -867,7 +1383,9 @@ const exportRefundReportService = async (filters) => {
  * ============================================================
  */
 
-const exportSettlementReportService = async (filters) => {
+const exportSettlementReportService = async (
+    filters
+) => {
 
     try {
 
@@ -886,45 +1404,61 @@ const exportSettlementReportService = async (filters) => {
         } = filters;
 
         const exportFormat =
-            validateExportFormat(format);
+            validateExportFormat(
+                format
+            );
 
-        const records = await getSettlementReport({
+        const records =
+            await getSettlementReport({
 
-            startDate,
+                startDate,
 
-            endDate,
+                endDate,
 
-            merchantId,
+                merchantId,
 
-            settlementStatus,
+                settlementStatus,
 
-            page: 1,
+                page: 1,
 
-            limit: 1000000
+                limit: 1000000
 
-        });
+            });
 
-        if (!records.length) {
+        if (
+            !records ||
+            !records.length
+        ) {
 
             return {
 
                 success: false,
 
-                message: "No settlement records found."
+                message:
+                    "No settlement records found."
 
             };
 
         }
 
-        const fileName = buildFileName({
+        const fileName =
+            buildFileName({
 
-            reportType: REPORT_TYPES.SETTLEMENT,
+                reportType:
+                    REPORT_TYPES.SETTLEMENT,
 
-            merchantId
+                merchantId
 
-        });
+            });
 
-        if (exportFormat === EXPORT_FORMATS.CSV) {
+        // =====================================================
+        // CSV
+        // =====================================================
+
+        if (
+            exportFormat ===
+            EXPORT_FORMATS.CSV
+        ) {
 
             return formatExportResponse(
 
@@ -932,7 +1466,8 @@ const exportSettlementReportService = async (filters) => {
 
                     fileName,
 
-                    headers: SETTLEMENT_HEADERS,
+                    headers:
+                        SETTLEMENT_HEADERS,
 
                     records
 
@@ -942,7 +1477,14 @@ const exportSettlementReportService = async (filters) => {
 
         }
 
-        if (exportFormat === EXPORT_FORMATS.EXCEL) {
+        // =====================================================
+        // EXCEL
+        // =====================================================
+
+        if (
+            exportFormat ===
+            EXPORT_FORMATS.EXCEL
+        ) {
 
             return formatExportResponse(
 
@@ -950,9 +1492,13 @@ const exportSettlementReportService = async (filters) => {
 
                     fileName,
 
-                    sheetName: "Settlement Report",
+                    sheetName:
+                        "Settlement Report",
 
-                    columns: buildExcelColumns(SETTLEMENT_HEADERS),
+                    columns:
+                        buildExcelColumns(
+                            SETTLEMENT_HEADERS
+                        ),
 
                     records
 
@@ -962,15 +1508,21 @@ const exportSettlementReportService = async (filters) => {
 
         }
 
+        // =====================================================
+        // PDF
+        // =====================================================
+
         return formatExportResponse(
 
             await exportPDF({
 
                 fileName,
 
-                title: "Settlement Report",
+                title:
+                    "Settlement Report",
 
-                headers: SETTLEMENT_HEADERS,
+                headers:
+                    SETTLEMENT_HEADERS,
 
                 records
 
@@ -994,7 +1546,9 @@ const exportSettlementReportService = async (filters) => {
  * ============================================================
  */
 
-const exportChargebackReportService = async (filters) => {
+const exportChargebackReportService = async (
+    filters
+) => {
 
     try {
 
@@ -1011,39 +1565,55 @@ const exportChargebackReportService = async (filters) => {
         } = filters;
 
         const exportFormat =
-            validateExportFormat(format);
+            validateExportFormat(
+                format
+            );
 
-        const records = await getChargebackReport({
+        const records =
+            await getChargebackReport({
 
-            startDate,
+                startDate,
 
-            endDate,
+                endDate,
 
-            merchantId
+                merchantId
 
-        });
+            });
 
-        if (!records.length) {
+        if (
+            !records ||
+            !records.length
+        ) {
 
             return {
 
                 success: false,
 
-                message: "No chargeback records found."
+                message:
+                    "No chargeback records found."
 
             };
 
         }
 
-        const fileName = buildFileName({
+        const fileName =
+            buildFileName({
 
-            reportType: REPORT_TYPES.CHARGEBACK,
+                reportType:
+                    REPORT_TYPES.CHARGEBACK,
 
-            merchantId
+                merchantId
 
-        });
+            });
 
-        if (exportFormat === EXPORT_FORMATS.CSV) {
+        // =====================================================
+        // CSV
+        // =====================================================
+
+        if (
+            exportFormat ===
+            EXPORT_FORMATS.CSV
+        ) {
 
             return formatExportResponse(
 
@@ -1051,7 +1621,8 @@ const exportChargebackReportService = async (filters) => {
 
                     fileName,
 
-                    headers: CHARGEBACK_HEADERS,
+                    headers:
+                        CHARGEBACK_HEADERS,
 
                     records
 
@@ -1061,7 +1632,14 @@ const exportChargebackReportService = async (filters) => {
 
         }
 
-        if (exportFormat === EXPORT_FORMATS.EXCEL) {
+        // =====================================================
+        // EXCEL
+        // =====================================================
+
+        if (
+            exportFormat ===
+            EXPORT_FORMATS.EXCEL
+        ) {
 
             return formatExportResponse(
 
@@ -1069,9 +1647,13 @@ const exportChargebackReportService = async (filters) => {
 
                     fileName,
 
-                    sheetName: "Chargeback Report",
+                    sheetName:
+                        "Chargeback Report",
 
-                    columns: buildExcelColumns(CHARGEBACK_HEADERS),
+                    columns:
+                        buildExcelColumns(
+                            CHARGEBACK_HEADERS
+                        ),
 
                     records
 
@@ -1081,15 +1663,21 @@ const exportChargebackReportService = async (filters) => {
 
         }
 
+        // =====================================================
+        // PDF
+        // =====================================================
+
         return formatExportResponse(
 
             await exportPDF({
 
                 fileName,
 
-                title: "Chargeback Report",
+                title:
+                    "Chargeback Report",
 
-                headers: CHARGEBACK_HEADERS,
+                headers:
+                    CHARGEBACK_HEADERS,
 
                 records
 
@@ -1104,30 +1692,41 @@ const exportChargebackReportService = async (filters) => {
     }
 
 };
+
+
+
 /**
  * ============================================================
  * DOWNLOAD REPORT
  * ============================================================
  */
 
-const downloadReportService = async (filters) => {
+const downloadReportService = async (
+    filters
+) => {
 
     try {
 
         const result =
-            await exportReportByTypeService(filters);
+            await exportReportByTypeService(
+                filters
+            );
 
         return {
 
             success: true,
 
-            message: "Report generated successfully.",
+            message:
+                "Report generated successfully.",
 
-            fileName: result.fileName,
+            fileName:
+                result.fileName,
 
-            filePath: result.filePath,
+            filePath:
+                result.filePath,
 
-            downloadPath: result.downloadPath
+            downloadPath:
+                result.downloadPath
 
         };
 
@@ -1147,45 +1746,67 @@ const downloadReportService = async (filters) => {
  * ============================================================
  */
 
-const exportReportByTypeService = async (filters) => {
+const exportReportByTypeService = async (
+    filters
+) => {
 
     try {
 
-        const { reportType } = filters;
+        const {
+            reportType
+        } = filters;
 
-        switch (reportType) {
+        switch (
+            reportType
+        ) {
 
             case REPORT_TYPES.DAILY:
 
-                return await exportDailyReportService(filters);
+                return await exportDailyReportService(
+                    filters
+                );
 
             case REPORT_TYPES.MONTHLY:
 
-                return await exportMonthlyReportService(filters);
+                return await exportMonthlyReportService(
+                    filters
+                );
 
             case REPORT_TYPES.MERCHANT:
 
-                return await exportMerchantReportService(filters);
+                return await exportMerchantReportService(
+                    filters
+                );
 
             case REPORT_TYPES.REFUND:
 
-                return await exportRefundReportService(filters);
+                return await exportRefundReportService(
+                    filters
+                );
 
             case REPORT_TYPES.SETTLEMENT:
 
-                return await exportSettlementReportService(filters);
+                return await exportSettlementReportService(
+                    filters
+                );
 
             case REPORT_TYPES.CHARGEBACK:
 
-                return await exportChargebackReportService(filters);
+                return await exportChargebackReportService(
+                    filters
+                );
 
             case REPORT_TYPES.TRANSACTIONS:
 
-                return await exportTransactionsService(filters);
+                return await exportTransactionsService(
+                    filters
+                );
 
             default:
 
-                throw new Error("Invalid report type.");
+                throw new Error(
+                    "Invalid report type."
+                );
 
         }
 
@@ -1209,9 +1830,15 @@ const getAvailableReportTypesService = () => {
 
     return {
 
-        reportTypes: Object.values(REPORT_TYPES),
+        reportTypes:
+            Object.values(
+                REPORT_TYPES
+            ),
 
-        exportFormats: Object.values(EXPORT_FORMATS)
+        exportFormats:
+            Object.values(
+                EXPORT_FORMATS
+            )
 
     };
 
@@ -1227,28 +1854,52 @@ const getAvailableReportTypesService = () => {
 
 module.exports = {
 
-    // Common
+    // =========================================================
+    // COMMON
+    // =========================================================
+
     exportTransactionsService,
+
     exportReportByTypeService,
+
     downloadReportService,
+
     getAvailableReportTypesService,
 
-    // Daily
+    // =========================================================
+    // DAILY
+    // =========================================================
+
     exportDailyReportService,
 
-    // Monthly
+    // =========================================================
+    // MONTHLY
+    // =========================================================
+
     exportMonthlyReportService,
 
-    // Merchant
+    // =========================================================
+    // MERCHANT
+    // =========================================================
+
     exportMerchantReportService,
 
-    // Refund
+    // =========================================================
+    // REFUND
+    // =========================================================
+
     exportRefundReportService,
 
-    // Settlement
+    // =========================================================
+    // SETTLEMENT
+    // =========================================================
+
     exportSettlementReportService,
 
-    // Chargeback
+    // =========================================================
+    // CHARGEBACK
+    // =========================================================
+
     exportChargebackReportService
 
 };

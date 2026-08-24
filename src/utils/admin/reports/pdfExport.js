@@ -3,948 +3,4329 @@ const path = require("path");
 const PDFDocument = require("pdfkit");
 
 // ============================================================
-// EXPORT DIRECTORY SETUP
+// EXPORT DIRECTORY
 // ============================================================
 
-const EXPORT_PATH = path.join(process.cwd(), "uploads", "reports/admin");
+const EXPORT_PATH = path.join(
+    process.cwd(),
+    "uploads",
+    "reports",
+    "admin"
+);
 
 const verifyExportDirectory = () => {
+
     if (!fs.existsSync(EXPORT_PATH)) {
-        fs.mkdirSync(EXPORT_PATH, { recursive: true });
+        fs.mkdirSync(EXPORT_PATH, {
+            recursive: true
+        });
     }
+
     return EXPORT_PATH;
 };
 
 verifyExportDirectory();
 
+
 // ============================================================
-// DESIGN CONSTANTS & BANK PALETTE
+// PAGE CONFIGURATION
 // ============================================================
 
 const PAGE = {
-    SIZE: "A4",
-    LAYOUT: "landscape",
-    WIDTH: 842,
-    HEIGHT: 595,
-    MARGIN: 28,
-    PRINTABLE_WIDTH: 786, // 842 - 56
-    PRINTABLE_HEIGHT: 539  // 595 - 56
+
+    WIDTH: 595,
+
+    HEIGHT: 842,
+
+    MARGIN: 36,
+
+    TOP: 30,
+
+    BOTTOM: 42,
+
+    CONTENT_TOP: 132,
+
+    CONTENT_BOTTOM: 770,
+
+    TABLE_HEADER_HEIGHT: 27,
+
+    TABLE_ROW_HEIGHT: 24
+
 };
 
-// Strict threshold before bottom margin to avoid triggering PDFKit auto-page-break
-const MAX_PAGE_Y = PAGE.HEIGHT - PAGE.MARGIN - 15;
+
+// ============================================================
+// COLORS
+// ============================================================
 
 const COLORS = {
-    bankNavy: "#0A2540",     // Deep Institutional Navy
-    brandBlue: "#1E40AF",    // Royal Financial Blue
-    accentBlue: "#2563EB",   // Accent Blue
-    darkSlate: "#0F172A",    // Primary Headings
-    bodyText: "#334155",     // Body Text
-    mutedText: "#64748B",    // Muted Labels
-    lightBorder: "#E2E8F0",  // Table Horizontal Borders
-    gridDivider: "#EDF2F7",  // Table Vertical Separators
-    cardBg: "#F8FAFC",       // Card Backgrounds
-    white: "#FFFFFF",
-    
-    // Financial Status Badges (Background, Text, Border)
-    status: {
-        SUCCESS:    { bg: "#DCFCE7", text: "#15803D", border: "#86EFAC" },
-        PAID:       { bg: "#DCFCE7", text: "#15803D", border: "#86EFAC" },
-        SETTLED:    { bg: "#DCFCE7", text: "#15803D", border: "#86EFAC" },
-        FAILED:     { bg: "#FEE2E2", text: "#B91C1C", border: "#FCA5A5" },
-        REJECTED:   { bg: "#FEE2E2", text: "#B91C1C", border: "#FCA5A5" },
-        PENDING:    { bg: "#FEF3C7", text: "#B45309", border: "#FDE68A" },
-        PROCESSING: { bg: "#FEF3C7", text: "#B45309", border: "#FDE68A" },
-        REFUNDED:   { bg: "#E0F2FE", text: "#0369A1", border: "#7DD3FC" },
-        CHARGEBACK: { bg: "#F3E8FF", text: "#6B21A8", border: "#D8B4FE" },
-        DEFAULT:    { bg: "#F1F5F9", text: "#475569", border: "#CBD5E1" }
-    }
+
+    navy: "#13233F",
+
+    navyDark: "#0B172D",
+
+    blue: "#246BCE",
+
+    blueLight: "#EAF2FF",
+
+    gold: "#C9A24D",
+
+    goldLight: "#F7F0DF",
+
+    green: "#087A3D",
+
+    greenLight: "#E8F6EE",
+
+    red: "#B42332",
+
+    redLight: "#FDEBEC",
+
+    orange: "#A86B00",
+
+    orangeLight: "#FFF5DD",
+
+    purple: "#6941C6",
+
+    purpleLight: "#F4F0FF",
+
+    cyan: "#087E8B",
+
+    cyanLight: "#E7F7F8",
+
+    black: "#101828",
+
+    text: "#344054",
+
+    muted: "#667085",
+
+    lightText: "#98A2B3",
+
+    border: "#D0D5DD",
+
+    borderLight: "#EAECF0",
+
+    background: "#F8FAFC",
+
+    rowAlt: "#F9FAFB",
+
+    white: "#FFFFFF"
+
 };
+
+
+// ============================================================
+// FONTS
+// ============================================================
 
 const FONT = {
+
     regular: "Helvetica",
+
     bold: "Helvetica-Bold",
-    italic: "Helvetica-Oblique",
-    boldItalic: "Helvetica-BoldOblique"
+
+    italic: "Helvetica-Oblique"
+
 };
 
-const FONT_SIZE = {
-    title: 16,
-    subTitle: 10.5,
-    heading: 9.5,
-    subHeading: 9,
-    body: 7.5,
-    small: 6.5,
-    tiny: 5.5
-};
-
-const REPORT_CONFIG = {
-    company: "PAYMENT GATEWAY FINANCIAL SERVICES",
-    subtitle: "OFFICIAL TRANSACTION & SETTLEMENT STATEMENT",
-    generatedBy: "SYSTEM ADMIN",
-    watermark: "OFFICIAL STATEMENT"
-};
 
 // ============================================================
-// FORMATTING HELPERS (WITH STANDARD RS. RUPEE PREFIX)
+// BANK / ORGANIZATION DETAILS
 // ============================================================
 
-const formatCurrency = (amount = 0) => {
-    if (amount === null || amount === undefined) return "Rs. 0.00";
-    let strVal = String(amount).trim();
-    if (strVal.startsWith("Rs.") || strVal.startsWith("INR")) {
-        return strVal;
-    }
-    if (strVal.startsWith("₹")) {
-        strVal = strVal.replace(/^₹\s*/, "");
-    }
-    const cleanStr = strVal.replace(/[^0-9.-]/g, "");
-    const num = Number(cleanStr) || 0;
-    return `Rs. ${num.toLocaleString("en-IN", {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2
-    })}`;
+const BANK_CONFIG = {
+
+    name:
+        "PAYMENT GATEWAY FINANCIAL SERVICES",
+
+    subtitle:
+        "OFFICIAL FINANCIAL REPORT",
+
+    ifsc:
+        "PGFS0000001",
+
+    micr:
+        "110001001",
+
+    footer:
+        "This is a computer-generated statement and does not require a physical signature.",
+
+    security:
+        "This report contains confidential financial information intended only for authorized personnel."
+
 };
 
-const formatDate = (date) => {
-    if (!date) return "-";
+
+// ============================================================
+// BASIC HELPERS
+// ============================================================
+
+const safeNumber = (value) => {
+
+    const number = Number(value);
+
+    return Number.isFinite(number)
+        ? number
+        : 0;
+
+};
+
+
+const formatCurrency = (value) => {
+
+    return `₹ ${safeNumber(value).toLocaleString(
+        "en-IN",
+        {
+            minimumFractionDigits: 2,
+
+            maximumFractionDigits: 2
+        }
+    )}`;
+
+};
+
+
+const formatNumber = (value) => {
+
+    return safeNumber(value)
+        .toLocaleString("en-IN");
+
+};
+
+
+const formatPercent = (value) => {
+
+    return `${safeNumber(value).toFixed(2)}%`;
+
+};
+
+
+const formatDate = (value) => {
+
+    if (!value) {
+        return "-";
+    }
+
     try {
-        return new Intl.DateTimeFormat("en-IN", {
-            day: "2-digit",
-            month: "short",
-            year: "numeric"
-        }).format(new Date(date));
+
+        const date = new Date(value);
+
+        if (Number.isNaN(date.getTime())) {
+            return String(value);
+        }
+
+        return new Intl.DateTimeFormat(
+            "en-IN",
+            {
+                day: "2-digit",
+                month: "short",
+                year: "numeric"
+            }
+        ).format(date);
+
     } catch {
-        return String(date);
+
+        return String(value);
+
     }
+
 };
 
-const formatDateTime = (date) => {
-    if (!date) return "-";
+
+const formatDateTime = (value) => {
+
+    if (!value) {
+        return "-";
+    }
+
     try {
-        return new Intl.DateTimeFormat("en-IN", {
-            day: "2-digit",
-            month: "short",
-            year: "numeric",
-            hour: "2-digit",
-            minute: "2-digit",
-            hour12: true
-        }).format(new Date(date));
+
+        const date = new Date(value);
+
+        if (Number.isNaN(date.getTime())) {
+            return String(value);
+        }
+
+        return new Intl.DateTimeFormat(
+            "en-IN",
+            {
+                day: "2-digit",
+                month: "short",
+                year: "numeric",
+                hour: "2-digit",
+                minute: "2-digit",
+                hour12: true
+            }
+        ).format(date);
+
     } catch {
-        return String(date);
+
+        return String(value);
+
     }
-};
 
-const truncateText = (text = "", maxLength = 24) => {
-    const str = String(text ?? "");
-    if (str.length <= maxLength) return str;
-    return str.substring(0, maxLength - 3) + "...";
 };
-
 // ============================================================
-// DRAWING UTILITIES
+// FORMAT CELL VALUE
 // ============================================================
 
-const drawLine = (doc, startX, startY, endX, endY, color = COLORS.lightBorder, width = 0.5) => {
-    doc.save()
-       .strokeColor(color)
-       .lineWidth(width)
-       .moveTo(startX, startY)
-       .lineTo(endX, endY)
-       .stroke()
-       .restore();
-};
+const formatCellValue = (key, record = {}) => {
 
-const drawBox = (doc, x, y, width, height, fill = COLORS.white, border = COLORS.lightBorder, radius = 3) => {
-    doc.save()
-       .fillColor(fill)
-       .strokeColor(border)
-       .lineWidth(0.5)
-       .roundedRect(x, y, width, height, radius)
-       .fillAndStroke()
-       .restore();
-};
-
-const drawStatusBadge = (doc, status = "", x, y, colWidth) => {
-    const s = String(status || "").toUpperCase();
-    const style = COLORS.status[s] || COLORS.status.DEFAULT;
-
-    const badgeWidth = Math.min(colWidth - 6, 60);
-    const badgeHeight = 11;
-    const badgeX = x + (colWidth - badgeWidth) / 2;
-
-    doc.save()
-       .fillColor(style.bg)
-       .strokeColor(style.border)
-       .lineWidth(0.5)
-       .roundedRect(badgeX, y + 3, badgeWidth, badgeHeight, 2.5)
-       .fillAndStroke()
-       .restore();
-
-    doc.font(FONT.bold)
-       .fontSize(FONT_SIZE.small)
-       .fillColor(style.text)
-       .text(s, badgeX, y + 4.5, { width: badgeWidth, align: "center", lineBreak: false });
-};
-
-const getLogo = () => {
-    const possibleLocations = [
-        path.join(process.cwd(), "assets", "logo.png"),
-        path.join(process.cwd(), "public", "logo.png"),
-        path.join(process.cwd(), "uploads", "logo.png")
-    ];
-    for (const file of possibleLocations) {
-        if (fs.existsSync(file)) return file;
+    if (!record) {
+        return "-";
     }
-    return null;
+
+    const value = record[key];
+
+    if (
+        value === null ||
+        value === undefined ||
+        value === ""
+    ) {
+        return "-";
+    }
+
+    const lowerKey =
+        String(key).toLowerCase();
+
+    // --------------------------------------------------------
+    // AMOUNT
+    // --------------------------------------------------------
+
+    if (
+        key === "amount" ||
+        lowerKey === "transaction_amount"
+    ) {
+        return formatCurrency(value);
+    }
+
+    // --------------------------------------------------------
+    // DATE / TIME
+    // --------------------------------------------------------
+
+    if (
+        lowerKey.includes("created_at") ||
+        lowerKey.includes("createdat") ||
+        lowerKey.includes("updated_at") ||
+        lowerKey.includes("updatedat") ||
+        lowerKey.includes("completed_at") ||
+        lowerKey.includes("completedat") ||
+        lowerKey.includes("processed_at") ||
+        lowerKey.includes("processedat") ||
+        lowerKey.includes("settled_at") ||
+        lowerKey.includes("settledat") ||
+        lowerKey === "date" ||
+        lowerKey.includes("datetime")
+    ) {
+        return formatDateTime(value);
+    }
+
+    // --------------------------------------------------------
+    // PERCENTAGE
+    // --------------------------------------------------------
+
+    if (
+        lowerKey.includes("percentage") ||
+        lowerKey.includes("percent") ||
+        lowerKey.includes("rate")
+    ) {
+        return formatPercent(value);
+    }
+
+    // --------------------------------------------------------
+    // COUNT / INTEGER
+    // --------------------------------------------------------
+
+    if (
+        lowerKey === "day" ||
+        lowerKey === "rank" ||
+        lowerKey.includes("count") ||
+        lowerKey.includes("transactions")
+    ) {
+        return formatNumber(value);
+    }
+
+    // --------------------------------------------------------
+    // OBJECT / ARRAY
+    // --------------------------------------------------------
+
+    if (
+        typeof value === "object"
+    ) {
+
+        try {
+
+            return JSON.stringify(
+                value
+            );
+
+        } catch {
+
+            return String(value);
+
+        }
+
+    }
+
+    // --------------------------------------------------------
+    // DEFAULT
+    // --------------------------------------------------------
+
+    return String(value);
 };
 
+const formatDateTimeFull = (value) => {
+
+    if (!value) {
+        return "-";
+    }
+
+    try {
+
+        const date = new Date(value);
+
+        if (Number.isNaN(date.getTime())) {
+            return String(value);
+        }
+
+        return new Intl.DateTimeFormat(
+            "en-IN",
+            {
+                day: "2-digit",
+                month: "long",
+                year: "numeric",
+                hour: "2-digit",
+                minute: "2-digit",
+                second: "2-digit",
+                hour12: true
+            }
+        ).format(date);
+
+    } catch {
+
+        return String(value);
+
+    }
+
+};
+
+
+const truncate = (
+    value,
+    maxLength = 30
+) => {
+
+    if (
+        value === null ||
+        value === undefined ||
+        value === ""
+    ) {
+        return "-";
+    }
+
+    const text = String(value);
+
+    if (text.length <= maxLength) {
+        return text;
+    }
+
+    return `${text.substring(0, maxLength - 3)}...`;
+
+};
+
+
+const prettyLabel = (
+    key = ""
+) => {
+
+    return String(key)
+        .replace(/([A-Z])/g, " $1")
+        .replace(/_/g, " ")
+        .replace(/\s+/g, " ")
+        .trim()
+        .toUpperCase();
+
+};
+
+
 // ============================================================
-// DOCUMENT CREATION & STREAM HELPERS
+// IMPORTANT
+// FIELDS THAT MUST NEVER APPEAR IN PDF
+// ============================================================
+
+const EXCLUDED_FIELDS = new Set([
+
+    "gateway_fee",
+
+    "gatewayFee",
+
+    "fee",
+
+    "fees",
+
+    "tax",
+
+    "gst",
+
+    "gst_amount",
+
+    "gstAmount",
+
+    "total_fee",
+
+    "totalFee",
+
+    "net_amount",
+
+    "netAmount",
+
+    "commission",
+
+    "commission_amount",
+
+    "commissionAmount"
+
+]);
+
+
+// ============================================================
+// REMOVE FINANCIAL FIELDS NOT REQUIRED IN PDF
+// ============================================================
+
+const cleanSummary = (
+    summary = {}
+) => {
+
+    const cleaned = {};
+
+    Object.entries(summary || {})
+        .forEach(
+            ([key, value]) => {
+
+                if (
+                    EXCLUDED_FIELDS.has(key)
+                ) {
+                    return;
+                }
+
+                const lowerKey =
+                    String(key).toLowerCase();
+
+                if (
+                    lowerKey.includes("fee") ||
+                    lowerKey.includes("tax") ||
+                    lowerKey.includes("gst") ||
+                    lowerKey.includes("commission")
+                ) {
+                    return;
+                }
+
+                cleaned[key] = value;
+
+            }
+        );
+
+    return cleaned;
+
+};
+
+
+// ============================================================
+// STATUS STYLE
+// ============================================================
+
+const getStatusStyle = (
+    status
+) => {
+
+    const value =
+        String(status || "UNKNOWN")
+            .toUpperCase();
+
+    if (
+        [
+            "SUCCESS",
+            "SUCCESSFUL",
+            "PAID",
+            "SETTLED",
+            "COMPLETED",
+            "APPROVED",
+            "PROCESSED"
+        ].includes(value)
+    ) {
+
+        return {
+
+            bg:
+                COLORS.greenLight,
+
+            text:
+                COLORS.green,
+
+            border:
+                "#A6D9BA"
+
+        };
+
+    }
+
+    if (
+        [
+            "FAILED",
+            "REJECTED",
+            "DECLINED",
+            "CANCELLED",
+            "ERROR"
+        ].includes(value)
+    ) {
+
+        return {
+
+            bg:
+                COLORS.redLight,
+
+            text:
+                COLORS.red,
+
+            border:
+                "#F1AEB5"
+
+        };
+
+    }
+
+    if (
+        [
+            "PENDING",
+            "PROCESSING",
+            "CREATED",
+            "INITIATED",
+            "AWAITING"
+        ].includes(value)
+    ) {
+
+        return {
+
+            bg:
+                COLORS.orangeLight,
+
+            text:
+                COLORS.orange,
+
+            border:
+                "#EBCB84"
+
+        };
+
+    }
+
+    if (
+        [
+            "REFUNDED",
+            "REVERSED",
+            "RETURNED"
+        ].includes(value)
+    ) {
+
+        return {
+
+            bg:
+                COLORS.cyanLight,
+
+            text:
+                COLORS.cyan,
+
+            border:
+                "#9AD7DC"
+
+        };
+
+    }
+
+    if (
+        [
+            "CHARGEBACK",
+            "DISPUTED",
+            "FRAUD"
+        ].includes(value)
+    ) {
+
+        return {
+
+            bg:
+                COLORS.purpleLight,
+
+            text:
+                COLORS.purple,
+
+            border:
+                "#CFC1F4"
+
+        };
+
+    }
+
+    return {
+
+        bg:
+            "#F2F4F7",
+
+        text:
+            COLORS.text,
+
+        border:
+            COLORS.border
+
+    };
+
+};
+
+
+// ============================================================
+// DRAW BOX
+// ============================================================
+
+const drawBox = (
+    doc,
+    x,
+    y,
+    width,
+    height,
+    fill,
+    border = fill,
+    radius = 5
+) => {
+
+    doc.save();
+
+    doc
+        .fillColor(fill)
+        .strokeColor(border)
+        .lineWidth(0.5)
+        .roundedRect(
+            x,
+            y,
+            width,
+            height,
+            radius
+        )
+        .fillAndStroke();
+
+    doc.restore();
+
+};
+
+
+// ============================================================
+// DRAW LINE
+// ============================================================
+
+const drawLine = (
+    doc,
+    x1,
+    y1,
+    x2,
+    y2,
+    color = COLORS.borderLight,
+    width = 0.5
+) => {
+
+    doc.save();
+
+    doc
+        .strokeColor(color)
+        .lineWidth(width)
+        .moveTo(x1, y1)
+        .lineTo(x2, y2)
+        .stroke();
+
+    doc.restore();
+
+};
+
+
+// ============================================================
+// CREATE PDF DOCUMENT
 // ============================================================
 
 const createDocument = () => {
+
     return new PDFDocument({
-        size: PAGE.SIZE,
-        layout: PAGE.LAYOUT,
+
+        size:
+            "A4",
+
+        layout:
+            "portrait",
+
         margins: {
-            top: PAGE.MARGIN,
-            left: PAGE.MARGIN,
-            right: PAGE.MARGIN,
-            bottom: PAGE.MARGIN
+
+            top:
+                PAGE.TOP,
+
+            left:
+                PAGE.MARGIN,
+
+            right:
+                PAGE.MARGIN,
+
+            bottom:
+                PAGE.BOTTOM
+
         },
-        autoFirstPage: true,
-        bufferPages: true,
+
+        autoFirstPage:
+            true,
+
+        bufferPages:
+            true,
+
         info: {
-            Title: "Official Financial Statement",
-            Author: REPORT_CONFIG.company,
-            Subject: "Payment Gateway Statement",
-            Creator: "Payment Gateway Core API",
-            Producer: "PDFKit Enterprise Engine",
-            CreationDate: new Date()
+
+            Title:
+                "Payment Gateway Financial Report",
+
+            Author:
+                BANK_CONFIG.name,
+
+            Subject:
+                "Financial Transaction Report",
+
+            Creator:
+                "Payment Gateway Core API",
+
+            Producer:
+                "PDFKit"
+
         }
+
     });
+
 };
 
-const createWriteStream = (fileName = "report") => {
+
+// ============================================================
+// CREATE WRITE STREAM
+// ============================================================
+
+const createWriteStream = (
+    fileName = "financial_report"
+) => {
+
     verifyExportDirectory();
-    const timestamp = Date.now();
-    const cleanName = fileName.replace(/[^a-zA-Z0-9_-]/g, "_");
-    const finalFileName = `${cleanName}_${timestamp}.pdf`;
-    const filePath = path.join(EXPORT_PATH, finalFileName);
-    const stream = fs.createWriteStream(filePath);
 
-    return { stream, filePath, fileName: finalFileName };
-};
+    const cleanName =
+        String(fileName)
+            .replace(
+                /[^a-zA-Z0-9_-]/g,
+                "_"
+            );
 
-// ============================================================
-// BANK HEADER & DOCUMENT METADATA
-// ============================================================
+    const generatedFileName =
+        `${cleanName}_${Date.now()}.pdf`;
 
-const drawHeader = (doc, { title, reportDate, generatedBy, filters = {} }) => {
-    let currentY = PAGE.MARGIN;
+    const filePath =
+        path.join(
+            EXPORT_PATH,
+            generatedFileName
+        );
 
-    // 1. Top Brand Accent Line
-    doc.save()
-       .fillColor(COLORS.bankNavy)
-       .rect(PAGE.MARGIN, currentY, PAGE.PRINTABLE_WIDTH, 3)
-       .fill()
-       .restore();
+    return {
 
-    currentY += 8;
+        stream:
+            fs.createWriteStream(
+                filePath
+            ),
 
-    // 2. Company Branding & Logo
-    const logo = getLogo();
-    const brandStartX = logo ? PAGE.MARGIN + 40 : PAGE.MARGIN;
+        filePath,
 
-    if (logo) {
-        try {
-            doc.image(logo, PAGE.MARGIN, currentY, { width: 32, height: 32 });
-        } catch {
-            // Ignore logo error
-        }
-    }
+        fileName:
+            generatedFileName
 
-    doc.font(FONT.bold)
-       .fontSize(FONT_SIZE.title)
-       .fillColor(COLORS.bankNavy)
-       .text(REPORT_CONFIG.company, brandStartX, currentY, { lineBreak: false });
-
-    doc.font(FONT.regular)
-       .fontSize(FONT_SIZE.small)
-       .fillColor(COLORS.mutedText)
-       .text(REPORT_CONFIG.subtitle, brandStartX, currentY + 16, { lineBreak: false });
-
-    // 3. Statement Control Box (Right Aligned)
-    const docRefId = `PG-STMT-${Math.floor(100000 + Math.random() * 900000)}`;
-    const controlWidth = 190;
-    const controlX = PAGE.WIDTH - PAGE.MARGIN - controlWidth;
-
-    drawBox(doc, controlX, currentY - 2, controlWidth, 42, COLORS.cardBg, COLORS.lightBorder, 3);
-
-    let metaY = currentY + 2;
-    const drawMetaRow = (label, val) => {
-        doc.font(FONT.bold)
-           .fontSize(FONT_SIZE.small)
-           .fillColor(COLORS.darkSlate)
-           .text(label, controlX + 6, metaY, { width: 80, align: "left", lineBreak: false });
-
-        doc.font(FONT.regular)
-           .fontSize(FONT_SIZE.small)
-           .fillColor(COLORS.bodyText)
-           .text(val, controlX + 86, metaY, { width: 96, align: "right", lineBreak: false });
-
-        metaY += 9.5;
     };
 
-    drawMetaRow("Statement Ref:", docRefId);
-    drawMetaRow("Statement Date:", formatDate(reportDate || new Date()));
-    drawMetaRow("Generated By:", generatedBy || REPORT_CONFIG.generatedBy);
-    drawMetaRow("Generated At:", formatDateTime(new Date()));
+};
 
-    currentY += 42;
 
-    // 4. Section Title & Divider
-    doc.font(FONT.bold)
-       .fontSize(FONT_SIZE.subTitle)
-       .fillColor(COLORS.brandBlue)
-       .text(title.toUpperCase(), PAGE.MARGIN, currentY, { lineBreak: false });
+// ============================================================
+// ADD PAGE
+// ============================================================
 
-    currentY += 12;
-    drawLine(doc, PAGE.MARGIN, currentY, PAGE.WIDTH - PAGE.MARGIN, currentY, COLORS.lightBorder, 0.5);
-    currentY += 6;
+const addPage = (
+    doc
+) => {
 
-    // 5. Applied Filters Bar
-    const filterEntries = Object.entries(filters || {}).filter(([_, v]) => v !== undefined && v !== null && v !== "");
-    if (filterEntries.length > 0) {
-        doc.font(FONT.bold)
-           .fontSize(FONT_SIZE.small)
-           .fillColor(COLORS.mutedText)
-           .text("APPLIED PARAMETERS & FILTERS:", PAGE.MARGIN, currentY, { lineBreak: false });
+    doc.addPage({
 
-        currentY += 9;
+        size:
+            "A4",
 
-        let filterX = PAGE.MARGIN;
-        filterEntries.forEach(([key, value]) => {
-            const labelStr = `${key.toUpperCase()}: ${value}`;
-            const textWidth = doc.widthOfString(labelStr, { font: FONT.bold, size: FONT_SIZE.tiny });
-            const badgeWidth = textWidth + 10;
+        layout:
+            "portrait",
 
-            if (filterX + badgeWidth > PAGE.WIDTH - PAGE.MARGIN) {
-                filterX = PAGE.MARGIN;
-                currentY += 14;
+        margins: {
+
+            top:
+                PAGE.TOP,
+
+            left:
+                PAGE.MARGIN,
+
+            right:
+                PAGE.MARGIN,
+
+            bottom:
+                PAGE.BOTTOM
+
+        }
+
+    });
+
+    return PAGE.CONTENT_TOP;
+
+};
+
+
+// ============================================================
+// DRAW HEADER
+// ============================================================
+
+const drawHeader = (
+    doc,
+    {
+        title,
+        reportDate,
+        generatedBy,
+        filters = {}
+    }
+) => {
+
+    // ========================================================
+    // TOP GOLD STRIPE
+    // ========================================================
+
+    doc
+        .fillColor(COLORS.gold)
+        .rect(
+            0,
+            0,
+            PAGE.WIDTH,
+            4
+        )
+        .fill();
+
+
+    // ========================================================
+    // TOP NAVY STRIPE
+    // ========================================================
+
+    doc
+        .fillColor(COLORS.navy)
+        .rect(
+            0,
+            4,
+            PAGE.WIDTH,
+            3
+        )
+        .fill();
+
+
+    // ========================================================
+    // LEFT BRAND
+    // ========================================================
+
+    const brandWidth = 300;
+
+    doc
+        .font(FONT.bold)
+        .fontSize(15)
+        .fillColor(COLORS.navy)
+        .text(
+            BANK_CONFIG.name,
+            PAGE.MARGIN,
+            26,
+            {
+                width:
+                    brandWidth,
+
+                lineBreak:
+                    false
             }
+        );
 
-            drawBox(doc, filterX, currentY, badgeWidth, 12, COLORS.cardBg, COLORS.lightBorder, 2);
 
-            doc.font(FONT.bold)
-               .fontSize(FONT_SIZE.tiny)
-               .fillColor(COLORS.darkSlate)
-               .text(labelStr, filterX + 5, currentY + 2, { width: textWidth, align: "left", lineBreak: false });
+    doc
+        .font(FONT.regular)
+        .fontSize(7)
+        .fillColor(COLORS.muted)
+        .text(
+            BANK_CONFIG.subtitle,
+            PAGE.MARGIN,
+            47,
+            {
+                width:
+                    brandWidth,
 
-            filterX += badgeWidth + 5;
-        });
+                lineBreak:
+                    false
+            }
+        );
 
-        currentY += 14;
-        drawLine(doc, PAGE.MARGIN, currentY, PAGE.WIDTH - PAGE.MARGIN, currentY, COLORS.lightBorder, 0.5);
-        currentY += 6;
-    }
 
-    return currentY;
-};
+    doc
+        .font(FONT.regular)
+        .fontSize(6)
+        .fillColor(COLORS.lightText)
+        .text(
+            `IFSC: ${BANK_CONFIG.ifsc}  |  MICR: ${BANK_CONFIG.micr}`,
+            PAGE.MARGIN,
+            61,
+            {
+                width:
+                    brandWidth,
 
-// ============================================================
-// FINANCIAL EXECUTIVE SUMMARY GRID (COMPACT SINGLE/DOUBLE ROW)
-// ============================================================
+                lineBreak:
+                    false
+            }
+        );
 
-const drawSummaryCards = (doc, summary = {}, startY) => {
-    if (!summary || Object.keys(summary).length === 0) return startY;
 
-    doc.font(FONT.bold)
-       .fontSize(FONT_SIZE.heading)
-       .fillColor(COLORS.bankNavy)
-       .text("FINANCIAL SUMMARY & ACCOUNT OVERVIEW", PAGE.MARGIN, startY, { lineBreak: false });
+    // ========================================================
+    // RIGHT META BOX
+    // ========================================================
 
-    startY += 10;
+    const metaWidth = 205;
 
-    const cards = [];
+    const metaX =
+        PAGE.WIDTH -
+        PAGE.MARGIN -
+        metaWidth;
 
-    Object.entries(summary).forEach(([key, val]) => {
-        if (val === undefined || val === null) return;
+    const metaY = 23;
 
-        const lowerKey = key.toLowerCase();
-        let formattedVal = String(val);
-        let color = COLORS.darkSlate;
+    const metaHeight = 58;
 
-        if (
-            lowerKey.includes("revenue") ||
-            lowerKey.includes("amount") ||
-            lowerKey.includes("fee") ||
-            lowerKey.includes("gst") ||
-            lowerKey.includes("tds") ||
-            lowerKey.includes("net") ||
-            lowerKey.includes("gross") ||
-            lowerKey.includes("volume") ||
-            lowerKey.includes("payin") ||
-            lowerKey.includes("payout") ||
-            lowerKey.includes("charge") ||
-            lowerKey.includes("price") ||
-            lowerKey.includes("balance") ||
-            lowerKey.includes("ticket")
-        ) {
-            formattedVal = formatCurrency(val);
-            color = (lowerKey.includes("fee") || lowerKey.includes("charge")) ? COLORS.brandBlue : COLORS.status.SUCCESS.text;
-        } else if (lowerKey.includes("rate") || lowerKey.includes("ratio") || lowerKey.includes("percent")) {
-            formattedVal = `${Number(val || 0)}%`;
-            color = COLORS.brandBlue;
-        } else if (lowerKey.includes("success")) {
-            color = COLORS.status.SUCCESS.text;
-        } else if (lowerKey.includes("fail") || lowerKey.includes("reject")) {
-            color = COLORS.status.FAILED.text;
-        } else if (lowerKey.includes("pend")) {
-            color = COLORS.status.PENDING.text;
+    drawBox(
+        doc,
+        metaX,
+        metaY,
+        metaWidth,
+        metaHeight,
+        COLORS.background,
+        COLORS.borderLight,
+        5
+    );
+
+
+    const reference =
+        `PG-${Date.now()
+            .toString()
+            .slice(-8)}`;
+
+
+    const metadata = [
+
+        [
+            "REFERENCE",
+            reference
+        ],
+
+        [
+            "REPORT DATE",
+            formatDate(
+                reportDate ||
+                new Date()
+            )
+        ],
+
+        [
+            "GENERATED BY",
+            generatedBy ||
+            "ADMIN"
+        ],
+
+        [
+            "GENERATED AT",
+            formatDateTime(
+                new Date()
+            )
+        ]
+
+    ];
+
+
+    let metadataY =
+        metaY + 7;
+
+
+    metadata.forEach(
+        ([label, value]) => {
+
+            doc
+                .font(FONT.bold)
+                .fontSize(5.8)
+                .fillColor(COLORS.muted)
+                .text(
+                    label,
+                    metaX + 8,
+                    metadataY,
+                    {
+                        width:
+                            70,
+
+                        lineBreak:
+                            false
+                    }
+                );
+
+
+            doc
+                .font(FONT.regular)
+                .fontSize(5.8)
+                .fillColor(COLORS.black)
+                .text(
+                    truncate(
+                        value,
+                        30
+                    ),
+                    metaX + 78,
+                    metadataY,
+                    {
+                        width:
+                            metaWidth - 86,
+
+                        align:
+                            "right",
+
+                        lineBreak:
+                            false
+                    }
+                );
+
+
+            metadataY += 12;
+
         }
+    );
 
-        const titleLabel = key
-            .replace(/([A-Z])/g, " $1")
-            .replace(/_/g, " ")
-            .trim()
-            .toUpperCase();
 
-        cards.push({ title: titleLabel, val: formattedVal, color });
-    });
+    // ========================================================
+    // REPORT TITLE
+    // ========================================================
 
-    if (cards.length === 0) return startY;
+    let y =
+        PAGE.CONTENT_TOP;
 
-    const gap = 6;
-    const cardsPerRow = Math.min(cards.length, 4);
-    const cardWidth = (PAGE.PRINTABLE_WIDTH - (gap * (cardsPerRow - 1))) / cardsPerRow;
-    const cardHeight = 30;
 
-    let currentX = PAGE.MARGIN;
-    let currentY = startY;
+    doc
+        .font(FONT.bold)
+        .fontSize(14)
+        .fillColor(COLORS.blue)
+        .text(
+            String(title || "")
+                .toUpperCase(),
+            PAGE.MARGIN,
+            y,
+            {
+                width:
+                    PAGE.WIDTH -
+                    PAGE.MARGIN * 2,
 
-    cards.forEach((card, index) => {
-        if (index > 0 && index % cardsPerRow === 0) {
-            currentX = PAGE.MARGIN;
-            currentY += cardHeight + gap;
-        }
+                lineBreak:
+                    false
+            }
+        );
 
-        drawBox(doc, currentX, currentY, cardWidth, cardHeight, COLORS.cardBg, COLORS.lightBorder, 2);
 
-        // Top Accent Line on Card
-        doc.save()
-           .fillColor(card.color || COLORS.brandBlue)
-           .rect(currentX, currentY, cardWidth, 1.5)
-           .fill()
-           .restore();
+    y += 20;
 
-        doc.font(FONT.bold)
-           .fontSize(FONT_SIZE.tiny)
-           .fillColor(COLORS.mutedText)
-           .text(card.title, currentX + 5, currentY + 4, { width: cardWidth - 10, lineBreak: false });
 
-        doc.font(FONT.bold)
-           .fontSize(FONT_SIZE.subHeading)
-           .fillColor(card.color || COLORS.darkSlate)
-           .text(card.val, currentX + 5, currentY + 15, { width: cardWidth - 10, lineBreak: false });
+    drawLine(
+        doc,
+        PAGE.MARGIN,
+        y,
+        PAGE.WIDTH - PAGE.MARGIN,
+        y,
+        COLORS.gold,
+        1.2
+    );
 
-        currentX += cardWidth + gap;
-    });
 
-    return currentY + cardHeight + 10;
-};
+    y += 12;
 
-// ============================================================
-// DYNAMIC HIGH-PRECISION TABLE ENGINE
-// ============================================================
 
-const buildDynamicColumns = (headers = []) => {
-    let rawHeaders = headers;
-    if (!rawHeaders || !Array.isArray(rawHeaders) || rawHeaders.length === 0) {
-        rawHeaders = [
-            { id: "transaction_id", title: "TRANSACTION ID" },
-            { id: "merchant_name", title: "MERCHANT" },
-            { id: "amount", title: "AMOUNT" },
-            { id: "status", title: "STATUS" },
-            { id: "created_at", title: "DATE & TIME" }
-        ];
-    }
+    // ========================================================
+    // FILTERS
+    // ========================================================
 
-    const availableWidth = PAGE.PRINTABLE_WIDTH;
+    const filterEntries =
+        Object.entries(
+            filters || {}
+        ).filter(
+            ([key, value]) => {
 
-    const columns = rawHeaders.map(h => {
-        if (typeof h === "string") {
-            h = { id: h, title: h };
-        }
-        const id = String((h && (h.id || h.key || h.field)) || "");
-        const title = String((h && (h.title || h.header || h.name || id)) || "").toUpperCase();
-        let weight = 1;
-        let align = "left";
+                if (
+                    value === null ||
+                    value === undefined ||
+                    value === ""
+                ) {
+                    return false;
+                }
 
-        const lowerId = id.toLowerCase();
-        if (lowerId.includes("id")) {
-            weight = 0.85;
-            align = "left";
-        } else if (
-            lowerId.includes("amount") ||
-            lowerId.includes("fee") ||
-            lowerId.includes("gst") ||
-            lowerId.includes("tds") ||
-            lowerId.includes("revenue") ||
-            lowerId.includes("net") ||
-            lowerId.includes("gross") ||
-            lowerId.includes("volume") ||
-            lowerId.includes("payin") ||
-            lowerId.includes("payout") ||
-            lowerId.includes("price") ||
-            lowerId.includes("charge") ||
-            lowerId.includes("balance")
-        ) {
-            weight = 1.05;
-            align = "right";
-        } else if (lowerId.includes("status") || lowerId.includes("method") || lowerId.includes("type") || lowerId.includes("currency")) {
-            weight = 0.9;
-            align = "center";
-        } else if (lowerId.includes("date") || lowerId.includes("at")) {
-            weight = 1.15;
-            align = "center";
-        } else if (lowerId.includes("email") || lowerId.includes("name") || lowerId.includes("merchant") || lowerId.includes("business") || lowerId.includes("reason")) {
-            weight = 1.35;
-            align = "left";
-        }
+                const lower =
+                    String(key)
+                        .toLowerCase();
 
-        return { id, key: id, title, weight, align };
-    });
+                if (
+                    lower.includes("fee") ||
+                    lower.includes("tax") ||
+                    lower.includes("gst")
+                ) {
+                    return false;
+                }
 
-    const totalWeight = columns.reduce((acc, c) => acc + c.weight, 0) || 1;
+                return true;
 
-    return columns.map(c => ({
-        key: c.key || c.id || "",
-        id: c.id || c.key || "",
-        title: c.title || "",
-        width: Math.floor((c.weight / totalWeight) * availableWidth),
-        align: c.align || "left"
-    }));
-};
+            }
+        );
 
-const formatCellValue = (columnKey, record) => {
-    if (!record || !columnKey) return "-";
-    const val = record[columnKey];
-    if (val === undefined || val === null) return "-";
-
-    const key = String(columnKey).toLowerCase();
 
     if (
-        key.includes("amount") ||
-        key.includes("fee") ||
-        key.includes("gst") ||
-        key.includes("tds") ||
-        key.includes("net") ||
-        key.includes("gross") ||
-        key.includes("revenue") ||
-        key.includes("volume") ||
-        key.includes("payin") ||
-        key.includes("payout") ||
-        key.includes("price") ||
-        key.includes("charge") ||
-        key.includes("balance")
+        filterEntries.length
     ) {
-        return formatCurrency(val);
-    }
-    if (key.includes("date") || key.includes("created_at") || key.includes("updated_at") || key.includes("settlement_date")) {
-        return formatDateTime(val);
-    }
-    return String(val);
-};
 
-const drawTableHeaderRow = (doc, columns, startY) => {
-    const rowHeight = 18;
+        doc
+            .font(FONT.bold)
+            .fontSize(6)
+            .fillColor(COLORS.muted)
+            .text(
+                "APPLIED FILTERS",
+                PAGE.MARGIN,
+                y,
+                {
+                    lineBreak:
+                        false
+                }
+            );
 
-    doc.save()
-       .fillColor(COLORS.bankNavy)
-       .roundedRect(PAGE.MARGIN, startY, PAGE.PRINTABLE_WIDTH, rowHeight, 2)
-       .fill()
-       .restore();
 
-    let currentX = PAGE.MARGIN;
+        y += 11;
 
-    columns.forEach((col, index) => {
-        doc.font(FONT.bold)
-           .fontSize(FONT_SIZE.small)
-           .fillColor(COLORS.white)
-           .text(col.title, currentX + 4, startY + 5, {
-               width: col.width - 8,
-               align: col.align || "left",
-               lineBreak: false
-           });
 
-        if (index < columns.length - 1) {
-            drawLine(doc, currentX + col.width, startY + 2, currentX + col.width, startY + rowHeight - 2, "#1E293B", 0.4);
-        }
+        let x =
+            PAGE.MARGIN;
 
-        currentX += col.width;
-    });
 
-    return startY + rowHeight;
-};
+        filterEntries.forEach(
+            ([key, value]) => {
 
-const drawTableRow = (doc, columns, record, rowIndex, startY) => {
-    const rowHeight = 17;
+                let displayValue =
+                    String(value);
 
-    if (rowIndex % 2 === 1) {
-        doc.save()
-           .fillColor(COLORS.cardBg)
-           .rect(PAGE.MARGIN, startY, PAGE.PRINTABLE_WIDTH, rowHeight)
-           .fill()
-           .restore();
-    }
 
-    let currentX = PAGE.MARGIN;
+                if (
+                    key.toLowerCase()
+                        .includes("date") &&
+                    /^\d{4}-\d{2}-\d{2}$/
+                        .test(displayValue)
+                ) {
 
-    columns.forEach((col, index) => {
-        const colKey = String(col.key || col.id || "");
-        const isStatus = colKey.toLowerCase().includes("status");
+                    displayValue =
+                        formatDate(
+                            `${displayValue}T00:00:00`
+                        );
 
-        if (isStatus) {
-            drawStatusBadge(doc, record[colKey], currentX, startY, col.width);
-        } else {
-            const rawVal = formatCellValue(colKey, record);
-            const textVal = truncateText(rawVal, col.width > 110 ? 28 : 16);
-            const isAmount = colKey.toLowerCase().includes("amount") ||
-                             colKey.toLowerCase().includes("fee") ||
-                             colKey.toLowerCase().includes("net") ||
-                             colKey.toLowerCase().includes("gross") ||
-                             colKey.toLowerCase().includes("revenue");
+                }
 
-            doc.font(isAmount ? FONT.bold : FONT.regular)
-               .fontSize(FONT_SIZE.body)
-               .fillColor(COLORS.darkSlate)
-               .text(textVal, currentX + 4, startY + 4.5, {
-                   width: col.width - 8,
-                   align: col.align || "left",
-                   lineBreak: false
-               });
-        }
 
-        if (index < columns.length - 1) {
-            drawLine(doc, currentX + col.width, startY, currentX + col.width, startY + rowHeight, COLORS.gridDivider, 0.4);
-        }
+                const label =
+                    `${prettyLabel(key)}: ${displayValue}`;
 
-        drawLine(doc, currentX, startY + rowHeight, currentX + col.width, startY + rowHeight, COLORS.lightBorder, 0.4);
 
-        currentX += col.width;
-    });
+                const width =
+                    Math.min(
+                        175,
+                        Math.max(
+                            80,
+                            label.length * 3.4 + 16
+                        )
+                    );
 
-    return startY + rowHeight;
-};
 
-const checkPageOverflow = (doc, currentY, requiredHeight, columns) => {
-    if (currentY + requiredHeight > MAX_PAGE_Y) {
-        doc.addPage({
-            size: PAGE.SIZE,
-            layout: PAGE.LAYOUT,
-            margins: { top: PAGE.MARGIN, left: PAGE.MARGIN, right: PAGE.MARGIN, bottom: PAGE.MARGIN }
-        });
-        return drawTableHeaderRow(doc, columns, PAGE.MARGIN);
-    }
-    return currentY;
-};
+                if (
+                    x + width >
+                    PAGE.WIDTH -
+                    PAGE.MARGIN
+                ) {
 
-const drawTableTotalsRow = (doc, columns, records, startY) => {
-    const rowHeight = 20;
+                    x =
+                        PAGE.MARGIN;
 
-    let totalCount = records ? records.length : 0;
-    let totalAmount = 0;
+                    y += 20;
 
-    if (records && Array.isArray(records)) {
-        records.forEach(r => {
-            if (r) {
-                const amt = r.amount || r.gross_amount || r.net_amount || r.refund_amount || r.totalAmount || r.total_amount || r.revenue || r.total_revenue || 0;
-                totalAmount += Number(amt) || 0;
+                }
+
+
+                drawBox(
+                    doc,
+                    x,
+                    y,
+                    width,
+                    16,
+                    COLORS.blueLight,
+                    COLORS.borderLight,
+                    3
+                );
+
+
+                doc
+                    .font(FONT.regular)
+                    .fontSize(5.8)
+                    .fillColor(COLORS.text)
+                    .text(
+                        truncate(
+                            label,
+                            40
+                        ),
+                        x + 7,
+                        y + 5,
+                        {
+                            width:
+                                width - 14,
+
+                            lineBreak:
+                                false
+                        }
+                    );
+
+
+                x +=
+                    width + 6;
+
             }
-        });
+        );
+
+
+        y += 25;
+
+
+        drawLine(
+            doc,
+            PAGE.MARGIN,
+            y,
+            PAGE.WIDTH - PAGE.MARGIN,
+            y,
+            COLORS.borderLight
+        );
+
+
+        y += 10;
+
     }
 
-    doc.save()
-       .fillColor(COLORS.cardBg)
-       .roundedRect(PAGE.MARGIN, startY, PAGE.PRINTABLE_WIDTH, rowHeight, 2)
-       .fill()
-       .restore();
 
-    drawLine(doc, PAGE.MARGIN, startY, PAGE.WIDTH - PAGE.MARGIN, startY, COLORS.bankNavy, 0.75);
-    drawLine(doc, PAGE.MARGIN, startY + rowHeight, PAGE.WIDTH - PAGE.MARGIN, startY + rowHeight, COLORS.bankNavy, 1.25);
+    return y;
 
-    doc.font(FONT.bold)
-       .fontSize(FONT_SIZE.body)
-       .fillColor(COLORS.bankNavy)
-       .text(`STATEMENT SUMMARY TOTALS (${totalCount} RECORDS)`, PAGE.MARGIN + 6, startY + 5.5, { lineBreak: false });
-
-    if (totalAmount > 0) {
-        doc.font(FONT.bold)
-           .fontSize(FONT_SIZE.subHeading)
-           .fillColor(COLORS.bankNavy)
-           .text(`TOTAL VOLUME: ${formatCurrency(totalAmount)}`, PAGE.WIDTH - PAGE.MARGIN - 240, startY + 5, {
-               width: 230,
-               align: "right",
-               lineBreak: false
-           });
-    }
-
-    return startY + rowHeight + 8;
 };
 
-const drawTransactionTable = (doc, { title = "STATEMENT DETAILS", headers = [], records = [], startY }) => {
-    const columns = buildDynamicColumns(headers);
-
-    doc.font(FONT.bold)
-       .fontSize(FONT_SIZE.heading)
-       .fillColor(COLORS.bankNavy)
-       .text(title.toUpperCase(), PAGE.MARGIN, startY, { lineBreak: false });
-
-    startY += 10;
-    startY = drawTableHeaderRow(doc, columns, startY);
-
-    if (!records || records.length === 0) {
-        doc.font(FONT.italic)
-           .fontSize(FONT_SIZE.body)
-           .fillColor(COLORS.mutedText)
-           .text("No financial records found for the selected period.", PAGE.MARGIN, startY + 10, {
-               width: PAGE.PRINTABLE_WIDTH,
-               align: "center",
-               lineBreak: false
-           });
-        return startY + 25;
-    }
-
-    let currentY = startY;
-
-    records.forEach((record, index) => {
-        currentY = checkPageOverflow(doc, currentY, 17, columns);
-        currentY = drawTableRow(doc, columns, record, index, currentY);
-    });
-
-    currentY = checkPageOverflow(doc, currentY, 20, columns);
-    currentY = drawTableTotalsRow(doc, columns, records, currentY);
-
-    return currentY;
-};
 
 // ============================================================
-// BANK SECURITY STAMP & WATERMARK
+// SUMMARY CARDS
 // ============================================================
 
-const drawBankSecurityNotice = (doc, startY) => {
-    // Only draw notice if it fits safely on current page without creating extra page
-    if (startY + 22 > MAX_PAGE_Y) return startY;
-
-    const noticeWidth = PAGE.PRINTABLE_WIDTH;
-    const noticeHeight = 20;
-
-    drawBox(doc, PAGE.MARGIN, startY, noticeWidth, noticeHeight, COLORS.cardBg, COLORS.lightBorder, 2.5);
-
-    doc.font(FONT.bold)
-       .fontSize(FONT_SIZE.tiny)
-       .fillColor(COLORS.bankNavy)
-       .text("OFFICIAL COMPUTER-GENERATED FINANCIAL STATEMENT - Valid without physical signature.", PAGE.MARGIN + 6, startY + 3.5, {
-           width: noticeWidth - 12,
-           lineBreak: false
-       });
-
-    doc.font(FONT.regular)
-       .fontSize(5.5)
-       .fillColor(COLORS.mutedText)
-       .text("This document is generated by the Payment Gateway Core System. For support or dispute resolution, contact support@paymentgateway.com.", PAGE.MARGIN + 6, startY + 11.5, {
-           width: noticeWidth - 12,
-           lineBreak: false
-       });
-
-    return startY + noticeHeight + 4;
-};
-
-const drawWatermark = (doc, text = REPORT_CONFIG.watermark) => {
-    const pages = doc.bufferedPageRange();
-    for (let i = 0; i < pages.count; i++) {
-        doc.switchToPage(i);
-        doc.save();
-        doc.rotate(-25, { origin: [PAGE.WIDTH / 2, PAGE.HEIGHT / 2] });
-        doc.font(FONT.bold)
-           .fillOpacity(0.035)
-           .fillColor(COLORS.bankNavy)
-           .fontSize(72)
-           .text(text, PAGE.WIDTH / 2 - 300, PAGE.HEIGHT / 2 - 30, {
-               width: 600,
-               align: "center",
-               lineBreak: false
-           });
-        doc.restore();
-    }
-};
-
-const drawFooter = (doc) => {
-    const pages = doc.bufferedPageRange();
-    const footerY = PAGE.HEIGHT - 18;
-
-    for (let i = 0; i < pages.count; i++) {
-        doc.switchToPage(i);
-
-        drawLine(doc, PAGE.MARGIN, footerY - 4, PAGE.WIDTH - PAGE.MARGIN, footerY - 4, COLORS.lightBorder, 0.4);
-
-        doc.font(FONT.bold)
-           .fontSize(FONT_SIZE.tiny)
-           .fillColor(COLORS.mutedText)
-           .text(`${REPORT_CONFIG.company} | CONFIDENTIAL FINANCIAL STATEMENT`, PAGE.MARGIN, footerY, {
-               lineBreak: false
-           });
-
-        doc.font(FONT.regular)
-           .fontSize(FONT_SIZE.tiny)
-           .fillColor(COLORS.mutedText)
-           .text(`Page ${i + 1} of ${pages.count}`, PAGE.WIDTH - PAGE.MARGIN - 100, footerY, {
-               width: 100,
-               align: "right",
-               lineBreak: false
-           });
-    }
-};
-
-// ============================================================
-// MAIN EXPORT PDF FUNCTION
-// ============================================================
-
-/**
- * Generates a Bank-Grade PDF Report & Statement and streams it to file.
- * 
- * @param {Object} options
- * @param {string} options.fileName - Output filename base
- * @param {string} options.title - Report Header Title
- * @param {Object} options.summary - Financial summary metrics object
- * @param {Array} options.records - Array of transaction/report data rows
- * @param {Array} options.headers - Array of column header objects [{ id, title }]
- * @param {Object} options.filters - Applied filter object
- * @param {string} options.generatedBy - Generator username/role
- * @returns {Promise<Object>} Export result details
- */
-const exportPDF = async ({
-    fileName = "financial_statement",
-    title = "Transaction Statement",
+const drawSummaryCards = (
+    doc,
     summary = {},
-    records = [],
-    headers = [],
-    filters = {},
-    generatedBy = REPORT_CONFIG.generatedBy
-}) => {
-    return new Promise((resolve, reject) => {
-        try {
-            const doc = createDocument();
-            const { stream, fileName: generatedFileName, filePath } = createWriteStream(fileName);
+    startY
+) => {
 
-            doc.pipe(stream);
+    const cleaned =
+        cleanSummary(
+            summary
+        );
 
-            // Render Document Sections
-            let currentY = drawHeader(doc, { title, reportDate: filters.date, generatedBy, filters });
 
-            if (summary && Object.keys(summary).length > 0) {
-                currentY = drawSummaryCards(doc, summary, currentY);
+    const entries =
+        Object.entries(
+            cleaned
+        ).filter(
+            ([, value]) =>
+                value !== null &&
+                value !== undefined
+        );
+
+
+    if (!entries.length) {
+        return startY;
+    }
+
+
+    let y =
+        startY;
+
+
+    // ========================================================
+    // SECTION TITLE
+    // ========================================================
+
+    doc
+        .fillColor(COLORS.gold)
+        .rect(
+            PAGE.MARGIN,
+            y + 1,
+            4,
+            14
+        )
+        .fill();
+
+
+    doc
+        .font(FONT.bold)
+        .fontSize(10)
+        .fillColor(COLORS.navy)
+        .text(
+            "FINANCIAL SUMMARY",
+            PAGE.MARGIN + 10,
+            y,
+            {
+                lineBreak:
+                    false
+            }
+        );
+
+
+    y += 20;
+
+
+    // ========================================================
+    // CARD GRID
+    // ========================================================
+
+    const columns = 4;
+
+    const gap = 7;
+
+    const cardWidth =
+        (
+            PAGE.WIDTH -
+            PAGE.MARGIN * 2 -
+            gap * (columns - 1)
+        ) /
+        columns;
+
+    const cardHeight = 49;
+
+
+    entries.forEach(
+        ([key, rawValue], index) => {
+
+            const row =
+                Math.floor(
+                    index / columns
+                );
+
+            const col =
+                index % columns;
+
+
+            const x =
+                PAGE.MARGIN +
+                col *
+                (
+                    cardWidth +
+                    gap
+                );
+
+
+            const cardY =
+                y +
+                row *
+                (
+                    cardHeight +
+                    gap
+                );
+
+
+            const lowerKey =
+                String(key)
+                    .toLowerCase();
+
+
+            let value;
+
+
+            if (
+                isPercentSummaryField(
+                    key
+                )
+            ) {
+
+                value =
+                    formatPercent(
+                        rawValue
+                    );
+
+            } else if (
+                isCurrencySummaryField(
+                    key
+                )
+            ) {
+
+                value =
+                    formatCurrency(
+                        rawValue
+                    );
+
+            } else {
+
+                value =
+                    formatNumber(
+                        rawValue
+                    );
+
             }
 
-            currentY = drawTransactionTable(doc, {
-                title: `${title} Details`,
-                headers,
-                records,
-                startY: currentY
-            });
 
-            // Temporarily set bottom margin to 0 during security notice, watermark, and footer passes
-            // so PDFKit text renderer never triggers auto-page-break on disclaimers/footers!
-            const prevBottomMargin = doc.page.margins.bottom;
-            doc.page.margins.bottom = 0;
+            let valueColor =
+                COLORS.navy;
 
-            drawBankSecurityNotice(doc, currentY);
-            drawWatermark(doc);
-            drawFooter(doc);
 
-            doc.page.margins.bottom = prevBottomMargin;
+            if (
+                lowerKey.includes("success")
+            ) {
 
-            // Finalize PDF Document
-            doc.end();
+                valueColor =
+                    COLORS.green;
 
-            stream.on("finish", () => {
-                const stats = fs.statSync(filePath);
-                resolve({
-                    success: true,
-                    fileName: generatedFileName,
-                    filePath,
-                    downloadPath: `/uploads/reports/pdf/${generatedFileName}`,
-                    downloadUrl: `/uploads/reports/pdf/${generatedFileName}`,
-                    size: stats.size,
-                    generatedAt: new Date()
-                });
-            });
+            }
 
-            stream.on("error", (err) => {
-                reject(err);
-            });
-        } catch (error) {
-            reject(error);
+
+            if (
+                lowerKey.includes("failed") ||
+                lowerKey.includes("chargeback")
+            ) {
+
+                valueColor =
+                    COLORS.red;
+
+            }
+
+
+            if (
+                lowerKey.includes("pending")
+            ) {
+
+                valueColor =
+                    COLORS.orange;
+
+            }
+
+
+            if (
+                lowerKey.includes("refund")
+            ) {
+
+                valueColor =
+                    COLORS.cyan;
+
+            }
+
+
+            if (
+                lowerKey.includes("revenue") ||
+                lowerKey.includes("amount")
+            ) {
+
+                valueColor =
+                    COLORS.blue;
+
+            }
+
+
+            drawBox(
+                doc,
+                x,
+                cardY,
+                cardWidth,
+                cardHeight,
+                COLORS.white,
+                COLORS.borderLight,
+                5
+            );
+
+
+            doc
+                .fillColor(COLORS.gold)
+                .rect(
+                    x,
+                    cardY,
+                    3,
+                    cardHeight
+                )
+                .fill();
+
+
+            doc
+                .font(FONT.bold)
+                .fontSize(5.8)
+                .fillColor(COLORS.muted)
+                .text(
+                    prettyLabel(key),
+                    x + 9,
+                    cardY + 8,
+                    {
+                        width:
+                            cardWidth - 15,
+
+                        lineBreak:
+                            false
+                    }
+                );
+
+
+            doc
+                .font(FONT.bold)
+                .fontSize(10.5)
+                .fillColor(valueColor)
+                .text(
+                    truncate(
+                        value,
+                        21
+                    ),
+                    x + 9,
+                    cardY + 26,
+                    {
+                        width:
+                            cardWidth - 15,
+
+                        lineBreak:
+                            false
+                    }
+                );
+
         }
-    });
+    );
+
+
+    const rows =
+        Math.ceil(
+            entries.length /
+            columns
+        );
+
+
+    return (
+        y +
+        rows *
+        (
+            cardHeight +
+            gap
+        ) +
+        8
+    );
+
 };
 
+
 // ============================================================
-// COMPATIBILITY & HELPER EXPORTS
+// SUMMARY FIELD FORMAT HELPERS
 // ============================================================
 
-const deleteExportedFile = async (filePath) => {
-    try {
-        if (filePath && fs.existsSync(filePath)) {
-            await fs.promises.unlink(filePath);
-        }
-    } catch (error) {
-        console.error("Failed to delete exported PDF:", error.message);
+const isPercentSummaryField = (
+    key
+) => {
+
+    const lower =
+        String(key)
+            .toLowerCase();
+
+    return (
+        lower.includes("rate") ||
+        lower.includes("percentage") ||
+        lower.includes("percent")
+    );
+
+};
+
+
+const isCurrencySummaryField = (
+    key
+) => {
+
+    const lower =
+        String(key)
+            .toLowerCase();
+
+    return (
+        lower.includes("revenue") ||
+        lower.includes("amount") ||
+        lower.includes("balance") ||
+        lower.includes("settled")
+    );
+
+};
+
+
+// ============================================================
+// SECTION TITLE
+// ============================================================
+
+const drawSectionTitle = (
+    doc,
+    title,
+    startY
+) => {
+
+    let y =
+        startY;
+
+
+    if (
+        y + 30 >
+        PAGE.CONTENT_BOTTOM
+    ) {
+
+        addPage(
+            doc
+        );
+
+        y =
+            PAGE.CONTENT_TOP;
+
     }
+
+
+    doc
+        .fillColor(COLORS.gold)
+        .rect(
+            PAGE.MARGIN,
+            y + 2,
+            4,
+            14
+        )
+        .fill();
+
+
+    doc
+        .font(FONT.bold)
+        .fontSize(10)
+        .fillColor(COLORS.navy)
+        .text(
+            title,
+            PAGE.MARGIN + 10,
+            y,
+            {
+                lineBreak:
+                    false
+            }
+        );
+
+
+    return y + 22;
+
 };
 
-const getFileDetails = (filePath) => {
-    if (!fs.existsSync(filePath)) return null;
-    const stats = fs.statSync(filePath);
+
+// ============================================================
+// TRANSACTION COLUMNS
+// NO FEE COLUMNS
+// ============================================================
+
+const getTransactionColumns = (
+    records = []
+) => {
+
+    if (!records.length) {
+        return [];
+    }
+
+
+    const sample =
+        records[0] || {};
+
+
+    const columns = [];
+
+
+    // ========================================================
+    // TRANSACTION ID
+    // ========================================================
+
+    if (
+        sample.transaction_id !== undefined ||
+        sample.transactionId !== undefined
+    ) {
+
+        columns.push({
+
+            key:
+                sample.transaction_id !== undefined
+                    ? "transaction_id"
+                    : "transactionId",
+
+            title:
+                "TXN ID",
+
+            width:
+                45,
+
+            align:
+                "left"
+
+        });
+
+    }
+
+
+    // ========================================================
+    // MERCHANT
+    // ========================================================
+
+    if (
+        sample.merchant_name !== undefined ||
+        sample.merchantName !== undefined
+    ) {
+
+        columns.push({
+
+            key:
+                sample.merchant_name !== undefined
+                    ? "merchant_name"
+                    : "merchantName",
+
+            title:
+                "MERCHANT",
+
+            width:
+                70,
+
+            align:
+                "left"
+
+        });
+
+    }
+
+
+    // ========================================================
+    // ORDER ID
+    // ========================================================
+
+    if (
+        sample.order_id !== undefined ||
+        sample.orderId !== undefined
+    ) {
+
+        columns.push({
+
+            key:
+                sample.order_id !== undefined
+                    ? "order_id"
+                    : "orderId",
+
+            title:
+                "ORDER ID",
+
+            width:
+                94,
+
+            align:
+                "left"
+
+        });
+
+    }
+
+
+    // ========================================================
+    // AMOUNT
+    // ========================================================
+
+    if (
+        sample.amount !== undefined
+    ) {
+
+        columns.push({
+
+            key:
+                "amount",
+
+            title:
+                "AMOUNT",
+
+            width:
+                67,
+
+            align:
+                "right"
+
+        });
+
+    }
+
+
+    // ========================================================
+    // PAYMENT METHOD
+    // ========================================================
+
+    if (
+        sample.payment_method !== undefined ||
+        sample.paymentMethod !== undefined
+    ) {
+
+        columns.push({
+
+            key:
+                sample.payment_method !== undefined
+                    ? "payment_method"
+                    : "paymentMethod",
+
+            title:
+                "METHOD",
+
+            width:
+                55,
+
+            align:
+                "left"
+
+        });
+
+    }
+
+
+    // ========================================================
+    // PAYMENT TYPE
+    // ========================================================
+
+    if (
+        sample.payment_type !== undefined ||
+        sample.paymentType !== undefined
+    ) {
+
+        columns.push({
+
+            key:
+                sample.payment_type !== undefined
+                    ? "payment_type"
+                    : "paymentType",
+
+            title:
+                "TYPE",
+
+            width:
+                50,
+
+            align:
+                "left"
+
+        });
+
+    }
+
+
+    // ========================================================
+    // STATUS
+    // ========================================================
+
+    if (
+        sample.status !== undefined
+    ) {
+
+        columns.push({
+
+            key:
+                "status",
+
+            title:
+                "STATUS",
+
+            width:
+                68,
+
+            align:
+                "center"
+
+        });
+
+    }
+
+
+    // ========================================================
+    // DATE / TIME
+    // ========================================================
+
+    if (
+        sample.created_at !== undefined ||
+        sample.createdAt !== undefined
+    ) {
+
+        columns.push({
+
+            key:
+                sample.created_at !== undefined
+                    ? "created_at"
+                    : "createdAt",
+
+            title:
+                "DATE / TIME",
+
+            width:
+                88,
+
+            align:
+                "left"
+
+        });
+
+    }
+
+
+    // ========================================================
+    // FALLBACK
+    // ========================================================
+
+    if (!columns.length) {
+
+        const keys =
+            Object.keys(
+                sample
+            ).filter(
+                key =>
+                    !isExcludedField(
+                        key
+                    )
+            );
+
+
+        keys
+            .slice(0, 8)
+            .forEach(
+                key => {
+
+                    columns.push({
+
+                        key,
+
+                        title:
+                            prettyLabel(key),
+
+                        width:
+                            60,
+
+                        align:
+                            "left"
+
+                    });
+
+                }
+            );
+
+    }
+
+
+    // ========================================================
+    // NORMALIZE WIDTH
+    // ========================================================
+
+    const availableWidth =
+        PAGE.WIDTH -
+        PAGE.MARGIN * 2;
+
+
+    const totalWidth =
+        columns.reduce(
+            (
+                total,
+                column
+            ) =>
+                total +
+                column.width,
+            0
+        );
+
+
+    if (
+        totalWidth !==
+        availableWidth
+    ) {
+
+        const scale =
+            availableWidth /
+            totalWidth;
+
+
+        columns.forEach(
+            column => {
+
+                column.width *=
+                    scale;
+
+            }
+        );
+
+    }
+
+
+    return columns;
+
+};
+
+
+// ============================================================
+// EXCLUDED FIELD CHECK
+// ============================================================
+
+const isExcludedField = (
+    key = ""
+) => {
+
+    if (
+        EXCLUDED_FIELDS.has(key)
+    ) {
+        return true;
+    }
+
+
+    const lower =
+        String(key)
+            .toLowerCase();
+
+
+    return (
+        lower.includes("fee") ||
+        lower.includes("tax") ||
+        lower.includes("gst") ||
+        lower.includes("commission")
+    );
+
+};
+
+
+// ============================================================
+// DRAW STATUS BADGE
+// ============================================================
+
+const drawStatusBadge = (
+    doc,
+    status,
+    x,
+    y,
+    width
+) => {
+
+    const value =
+        String(
+            status ||
+            "UNKNOWN"
+        )
+        .toUpperCase();
+
+
+    const style =
+        getStatusStyle(
+            value
+        );
+
+
+    const textWidth =
+        doc.widthOfString(
+            value,
+            {
+                font:
+                    FONT.bold,
+
+                size:
+                    5.5
+            }
+        );
+
+
+    const badgeWidth =
+        Math.min(
+            width,
+            Math.max(
+                43,
+                textWidth + 12
+            )
+        );
+
+
+    const badgeX =
+        x +
+        (
+            width -
+            badgeWidth
+        ) /
+        2;
+
+
+    drawBox(
+        doc,
+        badgeX,
+        y + 3,
+        badgeWidth,
+        16,
+        style.bg,
+        style.border,
+        4
+    );
+
+
+    doc
+        .font(FONT.bold)
+        .fontSize(5.5)
+        .fillColor(style.text)
+        .text(
+            value,
+            badgeX + 4,
+            y + 7,
+            {
+                width:
+                    badgeWidth - 8,
+
+                align:
+                    "center",
+
+                lineBreak:
+                    false
+            }
+        );
+
+};
+
+
+// ============================================================
+// DRAW TABLE HEADER
+// ============================================================
+
+const drawTableHeader = (
+    doc,
+    columns,
+    y
+) => {
+
+    if (
+        y +
+        PAGE.TABLE_HEADER_HEIGHT >
+        PAGE.CONTENT_BOTTOM
+    ) {
+
+        addPage(
+            doc
+        );
+
+        y =
+            PAGE.CONTENT_TOP;
+
+    }
+
+
+    drawBox(
+        doc,
+        PAGE.MARGIN,
+        y,
+        PAGE.WIDTH -
+            PAGE.MARGIN * 2,
+        PAGE.TABLE_HEADER_HEIGHT,
+        COLORS.navy,
+        COLORS.navy,
+        4
+    );
+
+
+    let x =
+        PAGE.MARGIN;
+
+
+    columns.forEach(
+        column => {
+
+            doc
+                .font(FONT.bold)
+                .fontSize(5.8)
+                .fillColor(COLORS.white)
+                .text(
+                    truncate(
+                        column.title,
+                        16
+                    ),
+                    x + 5,
+                    y + 9,
+                    {
+                        width:
+                            column.width - 10,
+
+                        align:
+                            column.align ===
+                            "right"
+                                ? "right"
+                                : "left",
+
+                        lineBreak:
+                            false
+                    }
+                );
+
+
+            x +=
+                column.width;
+
+        }
+    );
+
+
+    return (
+        y +
+        PAGE.TABLE_HEADER_HEIGHT
+    );
+
+};
+
+
+// ============================================================
+// DRAW TABLE ROW
+// ============================================================
+
+const drawTableRow = (
+    doc,
+    columns,
+    record,
+    index,
+    y
+) => {
+
+    const rowHeight =
+        PAGE.TABLE_ROW_HEIGHT;
+
+
+    if (
+        y + rowHeight >
+        PAGE.CONTENT_BOTTOM
+    ) {
+
+        addPage(
+            doc
+        );
+
+        y =
+            PAGE.CONTENT_TOP;
+
+        y =
+            drawTableHeader(
+                doc,
+                columns,
+                y
+            );
+
+    }
+
+
+    // Alternating row
+
+    if (
+        index % 2 === 1
+    ) {
+
+        doc
+            .fillColor(
+                COLORS.rowAlt
+            )
+            .rect(
+                PAGE.MARGIN,
+                y,
+                PAGE.WIDTH -
+                    PAGE.MARGIN * 2,
+                rowHeight
+            )
+            .fill();
+
+    }
+
+
+    let x =
+        PAGE.MARGIN;
+
+
+    columns.forEach(
+        column => {
+
+            const key =
+                column.key;
+
+
+            // Safety check:
+            // never print excluded fields.
+
+            if (
+                isExcludedField(key)
+            ) {
+                return;
+            }
+
+
+            const value =
+                record[key];
+
+
+            if (
+                key === "status"
+            ) {
+
+                drawStatusBadge(
+                    doc,
+                    value,
+                    x,
+                    y,
+                    column.width
+                );
+
+            } else {
+
+                const display =
+                    formatCellValue(
+                        key,
+                        record
+                    );
+
+
+                const isAmount =
+                    key === "amount";
+
+
+                doc
+                    .font(
+                        isAmount
+                            ? FONT.bold
+                            : FONT.regular
+                    )
+                    .fontSize(5.8)
+                    .fillColor(
+                        isAmount
+                            ? COLORS.blue
+                            : COLORS.text
+                    )
+                    .text(
+                        truncate(
+                            display,
+                            column.width > 75
+                                ? 25
+                                : 16
+                        ),
+                        x + 5,
+                        y + 8,
+                        {
+                            width:
+                                column.width - 10,
+
+                            align:
+                                column.align ||
+                                "left",
+
+                            lineBreak:
+                                false
+                        }
+                    );
+
+            }
+
+
+            drawLine(
+                doc,
+                x,
+                y,
+                x,
+                y + rowHeight,
+                COLORS.borderLight,
+                0.3
+            );
+
+
+            x +=
+                column.width;
+
+        }
+    );
+
+
+    drawLine(
+        doc,
+        PAGE.MARGIN,
+        y + rowHeight,
+        PAGE.WIDTH -
+            PAGE.MARGIN,
+        y + rowHeight,
+        COLORS.borderLight,
+        0.4
+    );
+
+
+    return (
+        y +
+        rowHeight
+    );
+
+};
+
+
+// ============================================================
+// TRANSACTION REGISTER
+// ============================================================
+
+const drawTransactionTable = (
+    doc,
+    {
+        title =
+            "TRANSACTION REGISTER",
+
+        records = [],
+
+        startY = PAGE.CONTENT_TOP
+    }
+) => {
+
+    let y =
+        drawSectionTitle(
+            doc,
+            title,
+            startY
+        );
+
+
+    if (
+        !Array.isArray(records) ||
+        records.length === 0
+    ) {
+
+        drawBox(
+            doc,
+            PAGE.MARGIN,
+            y,
+            PAGE.WIDTH -
+                PAGE.MARGIN * 2,
+            42,
+            COLORS.background,
+            COLORS.borderLight,
+            4
+        );
+
+
+        doc
+            .font(FONT.italic)
+            .fontSize(7)
+            .fillColor(COLORS.muted)
+            .text(
+                "No transaction records found for the selected period.",
+                PAGE.MARGIN,
+                y + 15,
+                {
+                    width:
+                        PAGE.WIDTH -
+                        PAGE.MARGIN * 2,
+
+                    align:
+                        "center",
+
+                    lineBreak:
+                        false
+                }
+            );
+
+
+        return y + 52;
+
+    }
+
+
+    doc
+        .font(FONT.regular)
+        .fontSize(6)
+        .fillColor(COLORS.muted)
+        .text(
+            `${records.length} transaction(s)`,
+            PAGE.WIDTH -
+                PAGE.MARGIN -
+                100,
+            y - 16,
+            {
+                width:
+                    100,
+
+                align:
+                    "right",
+
+                lineBreak:
+                    false
+            }
+        );
+
+
+    const columns =
+        getTransactionColumns(
+            records
+        );
+
+
+    y =
+        drawTableHeader(
+            doc,
+            columns,
+            y
+        );
+
+
+    records.forEach(
+        (
+            record,
+            index
+        ) => {
+
+            y =
+                drawTableRow(
+                    doc,
+                    columns,
+                    record,
+                    index,
+                    y
+                );
+
+        }
+    );
+
+
+    return y + 10;
+
+};
+
+
+// ============================================================
+// RECONCILIATION
+// NO FEE INFORMATION
+// ============================================================
+
+const drawReconciliation = (
+    doc,
+    records = [],
+    startY
+) => {
+
+    if (
+        !Array.isArray(records) ||
+        !records.length
+    ) {
+        return startY;
+    }
+
+
+    let y =
+        startY + 5;
+
+
+    if (
+        y + 88 >
+        PAGE.CONTENT_BOTTOM
+    ) {
+
+        addPage(
+            doc
+        );
+
+        y =
+            PAGE.CONTENT_TOP;
+
+    }
+
+
+    let totalTransactionValue =
+        0;
+
+    let successfulRevenue =
+        0;
+
+    let successfulCount =
+        0;
+
+    let createdCount =
+        0;
+
+    let failedCount =
+        0;
+
+    let pendingCount =
+        0;
+
+    let refundedCount =
+        0;
+
+    let chargebackCount =
+        0;
+
+
+    records.forEach(
+        record => {
+
+            const amount =
+                safeNumber(
+                    record.amount
+                );
+
+
+            totalTransactionValue +=
+                amount;
+
+
+            const status =
+                String(
+                    record.status ||
+                    ""
+                )
+                .toUpperCase();
+
+
+            switch (status) {
+
+                case "SUCCESS":
+
+                case "SUCCESSFUL":
+
+                    successfulCount++;
+
+                    successfulRevenue +=
+                        amount;
+
+                    break;
+
+
+                case "CREATED":
+
+                case "INITIATED":
+
+                    createdCount++;
+
+                    break;
+
+
+                case "FAILED":
+
+                    failedCount++;
+
+                    break;
+
+
+                case "PENDING":
+
+                case "PROCESSING":
+
+                    pendingCount++;
+
+                    break;
+
+
+                case "REFUNDED":
+
+                    refundedCount++;
+
+                    break;
+
+
+                case "CHARGEBACK":
+
+                    chargebackCount++;
+
+                    break;
+
+
+                default:
+
+                    break;
+
+            }
+
+        }
+    );
+
+
+    // ========================================================
+    // RECONCILIATION BOX
+    // ========================================================
+
+    drawBox(
+        doc,
+        PAGE.MARGIN,
+        y,
+        PAGE.WIDTH -
+            PAGE.MARGIN * 2,
+        82,
+        COLORS.navy,
+        COLORS.navy,
+        6
+    );
+
+
+    doc
+        .fillColor(COLORS.gold)
+        .rect(
+            PAGE.MARGIN,
+            y,
+            4,
+            82
+        )
+        .fill();
+
+
+    doc
+        .font(FONT.bold)
+        .fontSize(8)
+        .fillColor(COLORS.white)
+        .text(
+            "TRANSACTION RECONCILIATION",
+            PAGE.MARGIN + 14,
+            y + 10,
+            {
+                lineBreak:
+                    false
+            }
+        );
+
+
+    doc
+        .font(FONT.regular)
+        .fontSize(6)
+        .fillColor("#D0D5DD")
+        .text(
+            `Records: ${records.length}`,
+            PAGE.MARGIN + 14,
+            y + 28,
+            {
+                lineBreak:
+                    false
+            }
+        );
+
+
+    doc
+        .font(FONT.regular)
+        .fontSize(6)
+        .fillColor("#D0D5DD")
+        .text(
+            `Successful: ${successfulCount}`,
+            PAGE.MARGIN + 14,
+            y + 42,
+            {
+                lineBreak:
+                    false
+            }
+        );
+
+
+    doc
+        .font(FONT.regular)
+        .fontSize(6)
+        .fillColor("#D0D5DD")
+        .text(
+            `Created: ${createdCount}`,
+            PAGE.MARGIN + 95,
+            y + 28,
+            {
+                lineBreak:
+                    false
+            }
+        );
+
+
+    doc
+        .font(FONT.regular)
+        .fontSize(6)
+        .fillColor("#D0D5DD")
+        .text(
+            `Failed: ${failedCount}`,
+            PAGE.MARGIN + 95,
+            y + 42,
+            {
+                lineBreak:
+                    false
+            }
+        );
+
+
+    doc
+        .font(FONT.regular)
+        .fontSize(6)
+        .fillColor("#D0D5DD")
+        .text(
+            `Pending: ${pendingCount}`,
+            PAGE.MARGIN + 165,
+            y + 28,
+            {
+                lineBreak:
+                    false
+            }
+        );
+
+
+    doc
+        .font(FONT.regular)
+        .fontSize(6)
+        .fillColor("#D0D5DD")
+        .text(
+            `Refunded: ${refundedCount}`,
+            PAGE.MARGIN + 165,
+            y + 42,
+            {
+                lineBreak:
+                    false
+            }
+        );
+
+
+    doc
+        .font(FONT.regular)
+        .fontSize(6)
+        .fillColor("#D0D5DD")
+        .text(
+            `Chargebacks: ${chargebackCount}`,
+            PAGE.MARGIN + 245,
+            y + 28,
+            {
+                lineBreak:
+                    false
+            }
+        );
+
+
+    // ========================================================
+    // RIGHT SIDE AMOUNTS
+    // ========================================================
+
+    const rightX =
+        PAGE.WIDTH -
+        PAGE.MARGIN -
+        175;
+
+
+    doc
+        .font(FONT.bold)
+        .fontSize(6)
+        .fillColor("#D0D5DD")
+        .text(
+            "TOTAL TRANSACTION VALUE",
+            rightX,
+            y + 10,
+            {
+                width:
+                    165,
+
+                align:
+                    "right",
+
+                lineBreak:
+                    false
+            }
+        );
+
+
+    doc
+        .font(FONT.bold)
+        .fontSize(10)
+        .fillColor(COLORS.white)
+        .text(
+            formatCurrency(
+                totalTransactionValue
+            ),
+            rightX,
+            y + 22,
+            {
+                width:
+                    165,
+
+                align:
+                    "right",
+
+                lineBreak:
+                    false
+            }
+        );
+
+
+    doc
+        .font(FONT.regular)
+        .fontSize(6)
+        .fillColor("#D0D5DD")
+        .text(
+            `Successful Revenue: ${formatCurrency(
+                successfulRevenue
+            )}`,
+            rightX,
+            y + 44,
+            {
+                width:
+                    165,
+
+                align:
+                    "right",
+
+                lineBreak:
+                    false
+            }
+        );
+
+
+    return y + 94;
+
+};
+
+
+// ============================================================
+// SECURITY NOTICE
+// ============================================================
+
+const drawSecurityNotice = (
+    doc,
+    startY
+) => {
+
+    let y =
+        startY;
+
+
+    if (
+        y + 48 >
+        PAGE.CONTENT_BOTTOM
+    ) {
+
+        addPage(
+            doc
+        );
+
+        y =
+            PAGE.CONTENT_TOP;
+
+    }
+
+
+    drawBox(
+        doc,
+        PAGE.MARGIN,
+        y,
+        PAGE.WIDTH -
+            PAGE.MARGIN * 2,
+        40,
+        COLORS.background,
+        COLORS.borderLight,
+        4
+    );
+
+
+    doc
+        .font(FONT.bold)
+        .fontSize(6)
+        .fillColor(COLORS.navy)
+        .text(
+            "SECURITY & CONFIDENTIALITY NOTICE",
+            PAGE.MARGIN + 10,
+            y + 7,
+            {
+                lineBreak:
+                    false
+            }
+        );
+
+
+    doc
+        .font(FONT.regular)
+        .fontSize(5.8)
+        .fillColor(COLORS.muted)
+        .text(
+            BANK_CONFIG.security,
+            PAGE.MARGIN + 10,
+            y + 21,
+            {
+                width:
+                    PAGE.WIDTH -
+                    PAGE.MARGIN * 2 -
+                    20,
+
+                lineBreak:
+                    false
+            }
+        );
+
+
+    return y + 50;
+
+};
+
+
+// ============================================================
+// WATERMARK
+// ============================================================
+
+const drawWatermark = (
+    doc
+) => {
+
+    doc.save();
+
+
+    doc
+        .rotate(
+            -35,
+            {
+                origin: [
+                    PAGE.WIDTH / 2,
+                    PAGE.HEIGHT / 2
+                ]
+            }
+        );
+
+
+    doc
+        .font(FONT.bold)
+        .fontSize(54)
+        .fillColor("#E8ECF2")
+        .opacity(0.30)
+        .text(
+            "CONFIDENTIAL",
+            115,
+            385,
+            {
+                width:
+                    365,
+
+                align:
+                    "center",
+
+                lineBreak:
+                    false
+            }
+        );
+
+
+    doc.restore();
+
+};
+
+
+// ============================================================
+// FOOTER
+// ============================================================
+
+const drawFooter = (
+    doc,
+    pageNumber,
+    totalPages
+) => {
+
+    // Keep footer safely inside printable area.
+    // DO NOT place it below PAGE.HEIGHT - PAGE.BOTTOM.
+
+    const footerY =
+        PAGE.HEIGHT -
+        PAGE.BOTTOM -
+        24;
+
+
+    // --------------------------------------------------------
+    // FOOTER LINE
+    // --------------------------------------------------------
+
+    drawLine(
+        doc,
+        PAGE.MARGIN,
+        footerY,
+        PAGE.WIDTH - PAGE.MARGIN,
+        footerY,
+        COLORS.borderLight,
+        0.5
+    );
+
+
+    // --------------------------------------------------------
+    // LEFT FOOTER
+    // --------------------------------------------------------
+
+    doc
+        .font(FONT.regular)
+        .fontSize(5.5)
+        .fillColor(COLORS.muted)
+        .text(
+            BANK_CONFIG.footer,
+            PAGE.MARGIN,
+            footerY + 8,
+            {
+                width: 390,
+
+                height: 8,
+
+                lineBreak: false
+            }
+        );
+
+
+    // --------------------------------------------------------
+    // RIGHT PAGE NUMBER
+    // --------------------------------------------------------
+
+    doc
+        .font(FONT.bold)
+        .fontSize(6)
+        .fillColor(COLORS.navy)
+        .text(
+            `PAGE ${pageNumber} OF ${totalPages}`,
+            PAGE.WIDTH - PAGE.MARGIN - 90,
+            footerY + 8,
+            {
+                width: 90,
+
+                height: 8,
+
+                align: "right",
+
+                lineBreak: false
+            }
+        );
+};
+
+
+// ============================================================
+// GENERIC DATA TABLE
+// FOR MONTHLY ANALYTICS
+// ============================================================
+
+const drawDataTable = (
+    doc,
+    {
+        title,
+        headers = [],
+        records = [],
+        startY
+    }
+) => {
+
+    if (
+        !Array.isArray(records) ||
+        !records.length
+    ) {
+        return startY;
+    }
+
+
+    let y =
+        drawSectionTitle(
+            doc,
+            title,
+            startY
+        );
+
+
+    const filteredHeaders =
+        headers.filter(
+            header =>
+                !isExcludedField(
+                    header.id ||
+                    header.key
+                )
+        );
+
+
+    if (
+        !filteredHeaders.length
+    ) {
+        return y;
+    }
+
+
+    const availableWidth =
+        PAGE.WIDTH -
+        PAGE.MARGIN * 2;
+
+
+    const equalWidth =
+        availableWidth /
+        filteredHeaders.length;
+
+
+    const columns =
+        filteredHeaders.map(
+            header => {
+
+                const key =
+                    header.id ||
+                    header.key;
+
+
+                return {
+
+                    key,
+
+                    title:
+                        header.title ||
+                        prettyLabel(key),
+
+                    width:
+                        equalWidth,
+
+                    align:
+                        key === "day" ||
+                        key === "rank"
+                            ? "center"
+                            : isCurrencySummaryField(key)
+                                ? "right"
+                                : "left"
+
+                };
+
+            }
+        );
+
+
+    y =
+        drawTableHeader(
+            doc,
+            columns,
+            y
+        );
+
+
+    records.forEach(
+        (
+            record,
+            index
+        ) => {
+
+            y =
+                drawTableRow(
+                    doc,
+                    columns,
+                    record,
+                    index,
+                    y
+                );
+
+        }
+    );
+
+
+    return y + 10;
+
+};
+
+
+// ============================================================
+// MONTHLY REVENUE TABLE
+// ============================================================
+
+const drawMonthlyRevenueChart = (
+    doc,
+    data = [],
+    startY
+) => {
+
+    if (!data.length) {
+        return startY;
+    }
+
+
+    return drawDataTable(
+        doc,
+        {
+
+            title:
+                "DAILY REVENUE SUMMARY",
+
+            headers: [
+
+                {
+                    id:
+                        "day",
+
+                    title:
+                        "DAY"
+                },
+
+                {
+                    id:
+                        "revenue",
+
+                    title:
+                        "REVENUE"
+                },
+
+                {
+                    id:
+                        "totalTransactions",
+
+                    title:
+                        "TRANSACTIONS"
+                },
+
+                {
+                    id:
+                        "successfulTransactions",
+
+                    title:
+                        "SUCCESS"
+                }
+
+            ],
+
+            records:
+                data,
+
+            startY
+
+        }
+    );
+
+};
+
+
+// ============================================================
+// MONTHLY TRANSACTION TABLE
+// ============================================================
+
+const drawMonthlyTransactionChart = (
+    doc,
+    data = [],
+    startY
+) => {
+
+    if (!data.length) {
+        return startY;
+    }
+
+
+    return drawDataTable(
+        doc,
+        {
+
+            title:
+                "DAILY TRANSACTION STATUS",
+
+            headers: [
+
+                {
+                    id:
+                        "day",
+
+                    title:
+                        "DAY"
+                },
+
+                {
+                    id:
+                        "totalTransactions",
+
+                    title:
+                        "TOTAL"
+                },
+
+                {
+                    id:
+                        "successful",
+
+                    title:
+                        "SUCCESS"
+                },
+
+                {
+                    id:
+                        "created",
+
+                    title:
+                        "CREATED"
+                },
+
+                {
+                    id:
+                        "failed",
+
+                    title:
+                        "FAILED"
+                },
+
+                {
+                    id:
+                        "pending",
+
+                    title:
+                        "PENDING"
+                },
+
+                {
+                    id:
+                        "refunded",
+
+                    title:
+                        "REFUNDED"
+                },
+
+                {
+                    id:
+                        "chargeback",
+
+                    title:
+                        "CHARGEBACK"
+                }
+
+            ],
+
+            records:
+                data,
+
+            startY
+
+        }
+    );
+
+};
+
+
+// ============================================================
+// MONTHLY REFUND TABLE
+// ============================================================
+
+const drawMonthlyRefundChart = (
+    doc,
+    data = [],
+    startY
+) => {
+
+    if (!data.length) {
+        return startY;
+    }
+
+
+    return drawDataTable(
+        doc,
+        {
+
+            title:
+                "DAILY REFUND SUMMARY",
+
+            headers: [
+
+                {
+                    id:
+                        "day",
+
+                    title:
+                        "DAY"
+                },
+
+                {
+                    id:
+                        "totalRefunds",
+
+                    title:
+                        "REFUNDS"
+                },
+
+                {
+                    id:
+                        "refundAmount",
+
+                    title:
+                        "REFUND AMOUNT"
+                },
+
+                {
+                    id:
+                        "totalDebitAmount",
+
+                    title:
+                        "TOTAL DEBIT"
+                }
+
+            ],
+
+            records:
+                data,
+
+            startY
+
+        }
+    );
+
+};
+
+
+// ============================================================
+// TOP MERCHANTS
+// ============================================================
+
+const drawTopMerchants = (
+    doc,
+    data = [],
+    startY
+) => {
+
+    if (!data.length) {
+        return startY;
+    }
+
+
+    return drawDataTable(
+        doc,
+        {
+
+            title:
+                "TOP MERCHANTS",
+
+            headers: [
+
+                {
+                    id:
+                        "rank",
+
+                    title:
+                        "RANK"
+                },
+
+                {
+                    id:
+                        "merchantName",
+
+                    title:
+                        "MERCHANT"
+                },
+
+                {
+                    id:
+                        "businessName",
+
+                    title:
+                        "BUSINESS"
+                },
+
+                {
+                    id:
+                        "merchantCode",
+
+                    title:
+                        "CODE"
+                },
+
+                {
+                    id:
+                        "totalTransactions",
+
+                    title:
+                        "TXN"
+                },
+
+                {
+                    id:
+                        "revenue",
+
+                    title:
+                        "REVENUE"
+                }
+
+            ],
+
+            records:
+                data,
+
+            startY
+
+        }
+    );
+
+};
+
+
+// ============================================================
+// MERCHANT PERFORMANCE
+// ============================================================
+
+const drawMerchantPerformance = (
+    doc,
+    data = [],
+    startY
+) => {
+
+    if (!data.length) {
+        return startY;
+    }
+
+
+    return drawDataTable(
+        doc,
+        {
+
+            title:
+                "MERCHANT PERFORMANCE",
+
+            headers: [
+
+                {
+                    id:
+                        "rank",
+
+                    title:
+                        "RANK"
+                },
+
+                {
+                    id:
+                        "merchantName",
+
+                    title:
+                        "MERCHANT"
+                },
+
+                {
+                    id:
+                        "totalTransactions",
+
+                    title:
+                        "TXN"
+                },
+
+                {
+                    id:
+                        "revenue",
+
+                    title:
+                        "REVENUE"
+                },
+
+                {
+                    id:
+                        "feePercentage",
+
+                    title:
+                        "PERCENTAGE"
+                }
+
+            ],
+
+            records:
+                data,
+
+            startY
+
+        }
+    );
+
+};
+
+
+// ============================================================
+// EXPORT PDF
+// ============================================================
+
+const exportPDF = async ({
+    fileName =
+        "financial_report",
+
+    title =
+        "Transaction Statement",
+
+    summary = {},
+
+    records = [],
+
+    filters = {},
+
+    generatedBy =
+        "ADMIN",
+
+    report = null,
+
+    dashboard = null,
+
+    reportType = null,
+
+    merchantId = null
+
+}) => {
+
+    return new Promise(
+        (
+            resolve,
+            reject
+        ) => {
+
+            try {
+
+                // =================================================
+                // CREATE DOCUMENT
+                // =================================================
+
+                const doc =
+                    createDocument();
+
+
+                // =================================================
+                // CREATE FILE
+                // =================================================
+
+                const {
+                    stream,
+                    filePath,
+                    fileName:
+                        generatedFileName
+                } =
+                    createWriteStream(
+                        fileName
+                    );
+
+
+                doc.pipe(
+                    stream
+                );
+
+
+                // =================================================
+                // HEADER
+                // =================================================
+
+                let currentY =
+                    drawHeader(
+                        doc,
+                        {
+
+                            title,
+
+                            reportDate:
+                                filters.date ||
+                                filters.startDate ||
+                                filters.endDate ||
+                                new Date(),
+
+                            generatedBy,
+
+                            filters
+
+                        }
+                    );
+
+
+                // =================================================
+                // MONTHLY REPORT
+                // =================================================
+
+                if (
+                    reportType ===
+                    "MONTHLY" &&
+                    report
+                ) {
+
+                    // Summary
+
+                    currentY =
+                        drawSummaryCards(
+                            doc,
+                            report.summary ||
+                                {},
+                            currentY
+                        );
+
+
+                    // Revenue
+
+                    currentY =
+                        drawMonthlyRevenueChart(
+                            doc,
+                            (
+                                report.charts ||
+                                {}
+                            ).revenueChart ||
+                            [],
+                            currentY
+                        );
+
+
+                    // Transaction status
+
+                    currentY =
+                        drawMonthlyTransactionChart(
+                            doc,
+                            (
+                                report.charts ||
+                                {}
+                            ).transactionChart ||
+                            [],
+                            currentY
+                        );
+
+
+                    // Refunds
+
+                    currentY =
+                        drawMonthlyRefundChart(
+                            doc,
+                            (
+                                report.charts ||
+                                {}
+                            ).refundChart ||
+                            [],
+                            currentY
+                        );
+
+
+                    // Dashboard merchant data
+
+                    if (
+                        dashboard
+                    ) {
+
+                        currentY =
+                            drawTopMerchants(
+                                doc,
+                                dashboard.topMerchants ||
+                                [],
+                                currentY
+                            );
+
+
+                        currentY =
+                            drawMerchantPerformance(
+                                doc,
+                                dashboard.merchantPerformance ||
+                                [],
+                                currentY
+                            );
+
+                    }
+
+
+                    // Transaction register
+
+                    if (
+                        Array.isArray(
+                            records
+                        ) &&
+                        records.length
+                    ) {
+
+                        currentY =
+                            drawTransactionTable(
+                                doc,
+                                {
+
+                                    title:
+                                        "TRANSACTION REGISTER",
+
+                                    records,
+
+                                    startY:
+                                        currentY
+
+                                }
+                            );
+
+                    }
+
+                } else {
+
+                    // =================================================
+                    // DAILY / MERCHANT / OTHER REPORT
+                    // =================================================
+
+                    if (
+                        summary &&
+                        Object.keys(
+                            summary
+                        ).length
+                    ) {
+
+                        currentY =
+                            drawSummaryCards(
+                                doc,
+                                summary,
+                                currentY
+                            );
+
+                    }
+
+
+                    if (
+                        Array.isArray(
+                            records
+                        ) &&
+                        records.length
+                    ) {
+
+                        currentY =
+                            drawTransactionTable(
+                                doc,
+                                {
+
+                                    title:
+                                        "TRANSACTION REGISTER",
+
+                                    records,
+
+                                    startY:
+                                        currentY
+
+                                }
+                            );
+
+                    }
+
+                }
+
+
+                // =================================================
+                // RECONCILIATION
+                // =================================================
+
+                if (
+                    Array.isArray(
+                        records
+                    ) &&
+                    records.length
+                ) {
+
+                    currentY =
+                        drawReconciliation(
+                            doc,
+                            records,
+                            currentY
+                        );
+
+                }
+
+
+                // =================================================
+                // SECURITY NOTICE
+                // =================================================
+
+                currentY =
+                    drawSecurityNotice(
+                        doc,
+                        currentY
+                    );
+
+
+                // =================================================
+                // IMPORTANT
+                // GET FINAL PAGE COUNT BEFORE FOOTERS
+                // =================================================
+
+                const range =
+                    doc.bufferedPageRange();
+
+
+                const totalPages =
+                    range.count;
+
+
+                // =================================================
+                // FOOTERS + WATERMARK
+                // =================================================
+
+                for (
+                    let i = 0;
+                    i < totalPages;
+                    i++
+                ) {
+
+                    const pageIndex =
+                        range.start + i;
+
+
+                    doc.switchToPage(
+                        pageIndex
+                    );
+
+
+                    drawWatermark(
+                        doc
+                    );
+
+
+                    drawFooter(
+                        doc,
+                        i + 1,
+                        totalPages
+                    );
+
+                }
+
+
+                // =================================================
+                // END PDF
+                // =================================================
+
+                doc.end();
+
+
+                // =================================================
+                // STREAM FINISH
+                // =================================================
+
+                stream.on(
+                    "finish",
+                    () => {
+
+                        let size = 0;
+
+
+                        try {
+
+                            size =
+                                fs.statSync(
+                                    filePath
+                                ).size;
+
+                        } catch {
+
+                            size = 0;
+
+                        }
+
+
+                        resolve({
+
+                            success:
+                                true,
+
+                            fileName:
+                                generatedFileName,
+
+                            filePath,
+
+                            downloadPath:
+                                `/uploads/reports/admin/${generatedFileName}`,
+
+                            downloadUrl:
+                                `/uploads/reports/admin/${generatedFileName}`,
+
+                            size,
+
+                            pages:
+                                totalPages,
+
+                            generatedAt:
+                                new Date()
+
+                        });
+
+                    }
+                );
+
+
+                stream.on(
+                    "error",
+                    error => {
+
+                        reject(
+                            error
+                        );
+
+                    }
+                );
+
+
+            } catch (
+                error
+            ) {
+
+                reject(
+                    error
+                );
+
+            }
+
+        }
+    );
+
+};
+
+
+// ============================================================
+// DELETE PDF
+// ============================================================
+
+const deleteExportedFile = async (
+    filePath
+) => {
+
+    try {
+
+        if (
+            filePath &&
+            fs.existsSync(
+                filePath
+            )
+        ) {
+
+            await fs.promises.unlink(
+                filePath
+            );
+
+        }
+
+    } catch (
+        error
+    ) {
+
+        console.error(
+            "Failed to delete PDF:",
+            error.message
+        );
+
+    }
+
+};
+
+
+// ============================================================
+// GET FILE DETAILS
+// ============================================================
+
+const getFileDetails = (
+    filePath
+) => {
+
+    if (
+        !filePath ||
+        !fs.existsSync(
+            filePath
+        )
+    ) {
+
+        return null;
+
+    }
+
+
+    const stats =
+        fs.statSync(
+            filePath
+        );
+
+
     return {
+
         filePath,
-        size: stats.size,
-        createdAt: stats.birthtime,
-        modifiedAt: stats.mtime,
-        isFile: stats.isFile()
+
+        size:
+            stats.size,
+
+        createdAt:
+            stats.birthtime,
+
+        modifiedAt:
+            stats.mtime,
+
+        isFile:
+            stats.isFile()
+
     };
+
 };
 
-const formatFileSize = (bytes = 0) => {
-    if (bytes < 1024) return `${bytes} Bytes`;
-    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(2)} KB`;
-    if (bytes < 1024 * 1024 * 1024) return `${(bytes / 1024 / 1024).toFixed(2)} MB`;
-    return `${(bytes / 1024 / 1024 / 1024).toFixed(2)} GB`;
+
+// ============================================================
+// FORMAT FILE SIZE
+// ============================================================
+
+const formatFileSize = (
+    bytes = 0
+) => {
+
+    if (
+        bytes < 1024
+    ) {
+
+        return `${bytes} Bytes`;
+
+    }
+
+
+    if (
+        bytes <
+        1024 * 1024
+    ) {
+
+        return `${(
+            bytes / 1024
+        ).toFixed(2)} KB`;
+
+    }
+
+
+    if (
+        bytes <
+        1024 *
+        1024 *
+        1024
+    ) {
+
+        return `${(
+            bytes /
+            1024 /
+            1024
+        ).toFixed(2)} MB`;
+
+    }
+
+
+    return `${(
+        bytes /
+        1024 /
+        1024 /
+        1024
+    ).toFixed(2)} GB`;
+
 };
+
+
+// ============================================================
+// HEALTH CHECK
+// ============================================================
 
 const pdfHealthCheck = () => {
+
     return {
-        success: true,
-        engine: "PDFKit Enterprise",
-        exportDirectory: EXPORT_PATH,
-        directoryExists: fs.existsSync(EXPORT_PATH),
-        timestamp: new Date()
+
+        success:
+            true,
+
+        engine:
+            "PDFKit",
+
+        exportDirectory:
+            EXPORT_PATH,
+
+        directoryExists:
+            fs.existsSync(
+                EXPORT_PATH
+            ),
+
+        timestamp:
+            new Date()
+
     };
+
 };
 
+
 // ============================================================
-// MODULE EXPORTS
+// EXPORTS
 // ============================================================
 
 module.exports = {
+
     exportPDF,
+
     createDocument,
+
     createWriteStream,
+
     deleteExportedFile,
+
     getFileDetails,
+
     formatFileSize,
+
     verifyExportDirectory,
+
     pdfHealthCheck
+
 };
