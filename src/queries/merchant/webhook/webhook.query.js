@@ -149,19 +149,10 @@ const WEBHOOK_QUERIES = {
     // ======================================================
 
     DELETE_WEBHOOK: `
-
-        UPDATE merchant_webhooks
-
-        SET
-
-            status = 'INACTIVE'
-
-
-        WHERE webhook_id = ?
-
-        AND merchant_id = ?
-
-    `,
+    DELETE FROM merchant_webhooks
+    WHERE webhook_id = ?
+    AND merchant_id = ?
+`,
 
 
 
