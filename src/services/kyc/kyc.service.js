@@ -542,7 +542,7 @@ const uploadKycService = async (
 
             await connection.query(
 
-                `INSERT INTO merchant_kyc
+    `INSERT INTO merchant_kyc
 (
     merchant_id,
     pan_number,
@@ -563,23 +563,23 @@ VALUES
     'PENDING',
     FALSE,
     TRUE
-)`
+)`,
 
-                [
+    [
 
-                    numericMerchantId,
+        numericMerchantId,
 
-                    panNumber,
+        panNumber,
 
-                    aadhaarNumber,
+        aadhaarNumber,
 
-                    panDocument,
+        panDocument,
 
-                    aadhaarDocument
+        aadhaarDocument
 
-                ]
+    ]
 
-            );
+);
 
         }
 
