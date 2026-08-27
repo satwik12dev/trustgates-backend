@@ -63,9 +63,11 @@ const deleteWebhook = async (req, res) => {
 
         connection.release();
 
+
     }
 
 };
 
-
 module.exports = deleteWebhook;
+
+
