@@ -2,44 +2,39 @@ const express = require("express");
 
 const router = express.Router();
 
-
-
 const {
-
     getAdminWalletController,
-
     searchWalletController,
-
     blockWalletController,
-
     unblockWalletController,
-
     adjustWalletController
-
 } = require(
     "../../controller/wallet/adminWallet.controller"
 );
 
-
+const {
+    getAdminWalletAnalytics
+} = require("../../controller/adminWallet/adminWallet.controller")
 
 const authenticateAdmin = require(
     "../../middleware/authenticateAdmin"
 );
 
 
-
 // ==================================================
-// Admin Wallet Routes
+// Admin Wallet Analytics
 // ==================================================
-
-
-// Get Merchant Wallet
 
 router.get(
-    "/:merchantId",
+    "/details",
     authenticateAdmin,
-    getAdminWalletController
+    getAdminWalletAnalytics
 );
+
+
+// ==================================================
+// Search Merchant Wallet
+// ==================================================
 
 router.get(
     "/search",
@@ -47,11 +42,32 @@ router.get(
     searchWalletController
 );
 
+
+// ==================================================
+// Get Merchant Wallet
+// ==================================================
+
+router.get(
+    "/:merchantId",
+    authenticateAdmin,
+    getAdminWalletController
+);
+
+
+// ==================================================
+// Block Wallet
+// ==================================================
+
 router.post(
     "/block",
     authenticateAdmin,
     blockWalletController
 );
+
+
+// ==================================================
+// Unblock Wallet
+// ==================================================
 
 router.post(
     "/unblock",
@@ -59,10 +75,16 @@ router.post(
     unblockWalletController
 );
 
+
+// ==================================================
+// Adjust Wallet
+// ==================================================
+
 router.post(
     "/adjust",
     authenticateAdmin,
     adjustWalletController
 );
+
 
 module.exports = router;

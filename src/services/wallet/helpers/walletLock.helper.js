@@ -1,74 +1,127 @@
-const WALLET_QUERIES = require("../../../queries/wallet/wallet.query");
+const WALLET_QUERIES = require(
+    "../../../queries/wallet/wallet.query"
+);
 
 
-// ==================================================
-// Lock Wallet By ID
-// ==================================================
+// ==========================================================
+// Validate DB Connection
+// ==========================================================
 
-const lockWallet = async (
-
-    connection,
-
-    walletId
-
+const validateConnection = (
+    connection
 ) => {
 
+    if (
+        !connection ||
+        typeof connection.query !== "function"
+    ) {
 
-    const [rows] = await connection.query(
+        throw new Error(
+            "Valid MySQL connection is required."
+        );
+
+    }
+
+};
+
+
+// ==========================================================
+// Lock Wallet By ID
+// ==========================================================
+
+const lockWallet = async (
+    connection,
+    walletId
+) => {
+
+    validateConnection(
+        connection
+    );
+
+
+    if (
+        walletId === undefined ||
+        walletId === null
+    ) {
+
+        throw new Error(
+            "Wallet ID is required."
+        );
+
+    }
+
+
+    const [
+        rows
+    ] = await connection.query(
 
         WALLET_QUERIES.LOCK_WALLET,
 
         [
-
             walletId
-
         ]
 
     );
 
 
-    return rows[0] || null;
-
+    return rows.length
+        ? rows[0]
+        : null;
 
 };
 
 
-
-// ==================================================
+// ==========================================================
 // Lock Wallet By Merchant
-// ==================================================
+// ==========================================================
 
 const lockWalletByMerchant = async (
-
     connection,
-
     merchantId
-
 ) => {
 
+    validateConnection(
+        connection
+    );
 
-    const [rows] = await connection.query(
+
+    if (
+        merchantId === undefined ||
+        merchantId === null
+    ) {
+
+        throw new Error(
+            "Merchant ID is required."
+        );
+
+    }
+
+
+    const [
+        rows
+    ] = await connection.query(
 
         WALLET_QUERIES.LOCK_WALLET_BY_MERCHANT,
 
         [
-
             merchantId
-
         ]
 
     );
 
 
-    return rows[0] || null;
-
+    return rows.length
+        ? rows[0]
+        : null;
 
 };
 
 
+// ==========================================================
+// Export
+// ==========================================================
 
 module.exports = {
-
 
     lockWallet,
 

@@ -1,9 +1,5 @@
 const WALLET_QUERIES = {
 
-    // ==========================================================
-    // Create Wallet
-    // ==========================================================
-
     CREATE_WALLET: `
 
         INSERT INTO merchant_wallets
@@ -20,10 +16,6 @@ const WALLET_QUERIES = {
 
     `,
 
-
-    // ==========================================================
-    // Get Wallet By Merchant
-    // ==========================================================
 
     GET_WALLET_BY_MERCHANT: `
 
@@ -59,10 +51,6 @@ const WALLET_QUERIES = {
     `,
 
 
-    // ==========================================================
-    // Get Wallet By ID
-    // ==========================================================
-
     GET_WALLET_BY_ID: `
 
         SELECT
@@ -96,14 +84,6 @@ const WALLET_QUERIES = {
 
     `,
 
-
-    // ==========================================================
-    // Lock Wallet By ID
-    // ==========================================================
-    //
-    // MUST be executed inside a DB transaction.
-    //
-    // ==========================================================
 
     LOCK_WALLET: `
 
@@ -141,10 +121,6 @@ const WALLET_QUERIES = {
     `,
 
 
-    // ==========================================================
-    // Lock Wallet By Merchant
-    // ==========================================================
-
     LOCK_WALLET_BY_MERCHANT: `
 
         SELECT
@@ -181,17 +157,6 @@ const WALLET_QUERIES = {
     `,
 
 
-    // ==========================================================
-    // CREDIT WALLET
-    // ==========================================================
-    //
-    // PAYMENT SUCCESS
-    //
-    // available_balance += amount
-    // total_received    += amount
-    //
-    // ==========================================================
-
     CREDIT_WALLET: `
 
         UPDATE merchant_wallets
@@ -213,40 +178,12 @@ const WALLET_QUERIES = {
             updated_at =
                 NOW()
 
-        WHERE merchant_id = ?
+        WHERE wallet_id = ?
 
           AND wallet_status = 'ACTIVE'
 
     `,
 
-
-    // ==========================================================
-    // RESERVE WALLET BALANCE
-    // ==========================================================
-    //
-    // REFUND APPROVED
-    //
-    // total debit requirement:
-    //
-    // refund amount + fee
-    //
-    // available → reserved
-    //
-    // Example:
-    //
-    // Refund = 1000
-    // Fee    = 20
-    // Total  = 1020
-    //
-    // available = 10000
-    // reserved  = 0
-    //
-    // Result:
-    //
-    // available = 8980
-    // reserved  = 1020
-    //
-    // ==========================================================
 
     RESERVE_WALLET_BALANCE: `
 
@@ -269,7 +206,7 @@ const WALLET_QUERIES = {
             updated_at =
                 NOW()
 
-        WHERE merchant_id = ?
+        WHERE wallet_id = ?
 
           AND wallet_status = 'ACTIVE'
 
@@ -277,20 +214,6 @@ const WALLET_QUERIES = {
 
     `,
 
-
-    // ==========================================================
-    // RELEASE RESERVED BALANCE
-    // ==========================================================
-    //
-    // REFUND FAILED
-    //
-    // total reserved amount:
-    //
-    // refund amount + fee
-    //
-    // reserved → available
-    //
-    // ==========================================================
 
     RELEASE_RESERVED_BALANCE: `
 
@@ -313,7 +236,7 @@ const WALLET_QUERIES = {
             updated_at =
                 NOW()
 
-        WHERE merchant_id = ?
+        WHERE wallet_id = ?
 
           AND wallet_status = 'ACTIVE'
 
@@ -321,28 +244,6 @@ const WALLET_QUERIES = {
 
     `,
 
-
-    // ==========================================================
-    // COMPLETE REFUND
-    // ==========================================================
-    //
-    // REFUND SUCCESS
-    //
-    // IMPORTANT:
-    //
-    // reserved balance contains:
-    //
-    // refund amount + fee
-    //
-    // Therefore:
-    //
-    // reserved_balance -= total_debit_amount
-    //
-    // total_refunded += refund_amount
-    //
-    // available_balance is NOT changed.
-    //
-    // ==========================================================
 
     COMPLETE_REFUND: `
 
@@ -365,7 +266,7 @@ const WALLET_QUERIES = {
             updated_at =
                 NOW()
 
-        WHERE merchant_id = ?
+        WHERE wallet_id = ?
 
           AND wallet_status = 'ACTIVE'
 
@@ -373,16 +274,6 @@ const WALLET_QUERIES = {
 
     `,
 
-
-    // ==========================================================
-    // UPDATE WALLET BALANCE
-    // ==========================================================
-    //
-    // Generic controlled update.
-    //
-    // Do NOT use this for normal refund/payment operations.
-    //
-    // ==========================================================
 
     UPDATE_WALLET_BALANCE: `
 
@@ -415,10 +306,6 @@ const WALLET_QUERIES = {
     `,
 
 
-    // ==========================================================
-    // Update Wallet Status
-    // ==========================================================
-
     UPDATE_WALLET_STATUS: `
 
         UPDATE merchant_wallets
@@ -433,10 +320,6 @@ const WALLET_QUERIES = {
 
     `,
 
-
-    // ==========================================================
-    // Get All Wallets
-    // ==========================================================
 
     GET_ALL_WALLETS: `
 
@@ -470,7 +353,6 @@ const WALLET_QUERIES = {
         FROM merchant_wallets mw
 
         INNER JOIN merchants m
-
             ON m.merchant_id =
                mw.merchant_id
 
@@ -479,10 +361,6 @@ const WALLET_QUERIES = {
 
     `,
 
-
-    // ==========================================================
-    // Check Wallet Exists
-    // ==========================================================
 
     CHECK_WALLET_EXISTS: `
 

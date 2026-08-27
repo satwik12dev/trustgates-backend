@@ -6,6 +6,95 @@ const {
     "../../utils/errors"
 );
 
+const {
+    WALLET_STATUS
+} = require(
+    "../../constants/wallet.constants"
+);
+
+
+// ==================================================
+// Validate Positive Amount
+// ==================================================
+
+const validatePositiveAmount = (
+    amount,
+    message
+) => {
+
+    if (
+        amount === undefined ||
+        amount === null ||
+        amount === "" ||
+        !Number.isFinite(
+            Number(amount)
+        ) ||
+        Number(amount) <= 0
+    ) {
+
+        throw new BadRequestError(
+            message
+        );
+
+    }
+
+    return Number(amount);
+
+};
+
+
+// ==================================================
+// Validate Merchant ID
+// ==================================================
+
+const validateMerchantId = (
+    merchantId
+) => {
+
+    const id =
+        Number(merchantId);
+
+    if (
+        !Number.isSafeInteger(id) ||
+        id <= 0
+    ) {
+
+        throw new BadRequestError(
+            "Invalid merchant id."
+        );
+
+    }
+
+    return id;
+
+};
+
+
+// ==================================================
+// Validate Wallet ID
+// ==================================================
+
+const validateWalletId = (
+    walletId
+) => {
+
+    const id =
+        Number(walletId);
+
+    if (
+        !Number.isSafeInteger(id) ||
+        id <= 0
+    ) {
+
+        throw new BadRequestError(
+            "Invalid wallet id."
+        );
+
+    }
+
+    return id;
+
+};
 
 
 // ==================================================
@@ -13,25 +102,14 @@ const {
 // ==================================================
 
 const validateWalletCreation = (
-
     merchantId
-
 ) => {
 
-
-    if(!merchantId){
-
-
-        throw new BadRequestError(
-            "Merchant id is required."
-        );
-
-
-    }
-
+    return validateMerchantId(
+        merchantId
+    );
 
 };
-
 
 
 // ==================================================
@@ -39,25 +117,22 @@ const validateWalletCreation = (
 // ==================================================
 
 const validateWalletExists = (
-
     wallet
-
 ) => {
 
-
-    if(!wallet){
-
+    if (
+        !wallet
+    ) {
 
         throw new BadRequestError(
             "Wallet not found."
         );
 
-
     }
 
+    return wallet;
 
 };
-
 
 
 // ==================================================
@@ -65,31 +140,27 @@ const validateWalletExists = (
 // ==================================================
 
 const validateWalletActive = (
-
     wallet
-
 ) => {
 
+    validateWalletExists(
+        wallet
+    );
 
-    if(
-
-        !wallet ||
-
-        wallet.wallet_status !== "ACTIVE"
-
-    ){
-
+    if (
+        wallet.wallet_status !==
+        WALLET_STATUS.ACTIVE
+    ) {
 
         throw new ConflictError(
             "Wallet is not active."
         );
 
-
     }
 
+    return true;
 
 };
-
 
 
 // ==================================================
@@ -97,33 +168,33 @@ const validateWalletActive = (
 // ==================================================
 
 const validateWalletOwnership = (
-
     merchantId,
-
     wallet
-
 ) => {
 
+    const normalizedMerchantId =
+        validateMerchantId(
+            merchantId
+        );
 
-    if(
+    validateWalletExists(
+        wallet
+    );
 
+    if (
         Number(wallet.merchant_id) !==
-
-        Number(merchantId)
-
-    ){
-
+        normalizedMerchantId
+    ) {
 
         throw new UnauthorizedError(
             "Wallet does not belong to merchant."
         );
 
-
     }
 
+    return true;
 
 };
-
 
 
 // ==================================================
@@ -131,33 +202,15 @@ const validateWalletOwnership = (
 // ==================================================
 
 const validateCreditAmount = (
-
     amount
-
 ) => {
 
-
-    if(
-
-        amount === undefined ||
-
-        amount === null ||
-
-        Number(amount) <= 0
-
-    ){
-
-
-        throw new BadRequestError(
-            "Credit amount must be greater than zero."
-        );
-
-
-    }
-
+    return validatePositiveAmount(
+        amount,
+        "Credit amount must be greater than zero."
+    );
 
 };
-
 
 
 // ==================================================
@@ -165,33 +218,15 @@ const validateCreditAmount = (
 // ==================================================
 
 const validateDebitAmount = (
-
     amount
-
 ) => {
 
-
-    if(
-
-        amount === undefined ||
-
-        amount === null ||
-
-        Number(amount) <= 0
-
-    ){
-
-
-        throw new BadRequestError(
-            "Debit amount must be greater than zero."
-        );
-
-
-    }
-
+    return validatePositiveAmount(
+        amount,
+        "Debit amount must be greater than zero."
+    );
 
 };
-
 
 
 // ==================================================
@@ -199,33 +234,44 @@ const validateDebitAmount = (
 // ==================================================
 
 const validateSufficientBalance = (
-
     availableBalance,
-
     debitAmount
-
 ) => {
 
+    const balance =
+        Number(availableBalance);
 
-    if(
+    const amount =
+        validateDebitAmount(
+            debitAmount
+        );
 
-        Number(debitAmount) >
 
-        Number(availableBalance)
+    if (
+        !Number.isFinite(balance) ||
+        balance < 0
+    ) {
 
-    ){
+        throw new ConflictError(
+            "Invalid wallet balance."
+        );
 
+    }
+
+
+    if (
+        amount > balance
+    ) {
 
         throw new ConflictError(
             "Insufficient wallet balance."
         );
 
-
     }
 
+    return true;
 
 };
-
 
 
 // ==================================================
@@ -233,29 +279,26 @@ const validateSufficientBalance = (
 // ==================================================
 
 const validatePendingBalance = (
-
     pendingBalance
-
 ) => {
 
+    const balance =
+        Number(pendingBalance);
 
-    if(
-
-        Number(pendingBalance) <= 0
-
-    ){
-
+    if (
+        !Number.isFinite(balance) ||
+        balance <= 0
+    ) {
 
         throw new ConflictError(
             "No pending balance available."
         );
 
-
     }
 
+    return true;
 
 };
-
 
 
 // ==================================================
@@ -263,33 +306,45 @@ const validatePendingBalance = (
 // ==================================================
 
 const validateBlockAmount = (
-
     availableBalance,
-
     amount
-
 ) => {
 
+    const balance =
+        Number(availableBalance);
 
-    if(
+    const normalizedAmount =
+        validatePositiveAmount(
+            amount,
+            "Block amount must be greater than zero."
+        );
 
-        Number(amount) >
 
-        Number(availableBalance)
+    if (
+        !Number.isFinite(balance) ||
+        balance < 0
+    ) {
 
-    ){
+        throw new ConflictError(
+            "Invalid available wallet balance."
+        );
 
+    }
+
+
+    if (
+        normalizedAmount > balance
+    ) {
 
         throw new ConflictError(
             "Block amount exceeds available balance."
         );
 
-
     }
 
+    return true;
 
 };
-
 
 
 // ==================================================
@@ -297,33 +352,45 @@ const validateBlockAmount = (
 // ==================================================
 
 const validateUnblockAmount = (
-
     blockedBalance,
-
     amount
-
 ) => {
 
+    const balance =
+        Number(blockedBalance);
 
-    if(
+    const normalizedAmount =
+        validatePositiveAmount(
+            amount,
+            "Unblock amount must be greater than zero."
+        );
 
-        Number(amount) >
 
-        Number(blockedBalance)
+    if (
+        !Number.isFinite(balance) ||
+        balance < 0
+    ) {
 
-    ){
+        throw new ConflictError(
+            "Invalid blocked wallet balance."
+        );
 
+    }
+
+
+    if (
+        normalizedAmount > balance
+    ) {
 
         throw new ConflictError(
             "Unblock amount exceeds blocked balance."
         );
 
-
     }
 
+    return true;
 
 };
-
 
 
 // ==================================================
@@ -331,25 +398,39 @@ const validateUnblockAmount = (
 // ==================================================
 
 const validateIdempotencyKey = (
-
     key
-
 ) => {
 
-
-    if(!key){
-
+    if (
+        typeof key !== "string" ||
+        key.trim().length === 0
+    ) {
 
         throw new BadRequestError(
             "Idempotency key is required."
         );
 
+    }
+
+
+    const normalizedKey =
+        key.trim();
+
+
+    if (
+        normalizedKey.length > 100
+    ) {
+
+        throw new BadRequestError(
+            "Idempotency key must not exceed 100 characters."
+        );
 
     }
 
 
-};
+    return normalizedKey;
 
+};
 
 
 // ==================================================
@@ -357,51 +438,88 @@ const validateIdempotencyKey = (
 // ==================================================
 
 const validatePagination = (
-
-    page,
-
-    limit
-
+    page = 1,
+    limit = 20
 ) => {
 
+    const normalizedPage =
+        Number(page);
 
-    if(
+    const normalizedLimit =
+        Number(limit);
 
-        page &&
 
-        Number(page) <= 0
-
-    ){
-
+    if (
+        !Number.isSafeInteger(
+            normalizedPage
+        ) ||
+        normalizedPage <= 0
+    ) {
 
         throw new BadRequestError(
             "Invalid page number."
         );
 
-
     }
 
 
-
-    if(
-
-        limit &&
-
-        Number(limit) <= 0
-
-    ){
-
+    if (
+        !Number.isSafeInteger(
+            normalizedLimit
+        ) ||
+        normalizedLimit <= 0 ||
+        normalizedLimit > 100
+    ) {
 
         throw new BadRequestError(
-            "Invalid limit."
+            "Invalid limit. Maximum limit is 100."
         );
-
 
     }
 
+
+    return {
+
+        page:
+            normalizedPage,
+
+        limit:
+            normalizedLimit,
+
+        offset:
+            (
+                normalizedPage - 1
+            ) *
+            normalizedLimit
+
+    };
 
 };
 
+
+// ==================================================
+// Validate Wallet Status
+// ==================================================
+
+const validateWalletStatus = (
+    status
+) => {
+
+    if (
+        !Object.values(
+            WALLET_STATUS
+        ).includes(status)
+    ) {
+
+        throw new BadRequestError(
+            "Invalid wallet status."
+        );
+
+    }
+
+    return status;
+
+};
 
 
 // ==================================================
@@ -410,6 +528,9 @@ const validatePagination = (
 
 module.exports = {
 
+    validateMerchantId,
+
+    validateWalletId,
 
     validateWalletCreation,
 
@@ -433,7 +554,8 @@ module.exports = {
 
     validateIdempotencyKey,
 
-    validatePagination
+    validatePagination,
 
+    validateWalletStatus
 
 };

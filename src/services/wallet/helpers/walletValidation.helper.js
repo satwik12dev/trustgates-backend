@@ -1,59 +1,39 @@
 const {
     BadRequestError,
-    ConflictError
-} = require("../../../utils/errors");
+    ConflictError,
+    UnauthorizedError
+} = require(
+    "../../../utils/errors"
+);
 
 
-// ==================================================
+// ==========================================================
 // Validate Wallet Creation
-// ==================================================
+// ==========================================================
 
 const validateWalletCreation = (
-    merchantId,
-    currency = "INR"
+    merchantId
 ) => {
-
-    // ==========================================
-    // Merchant ID
-    // ==========================================
 
     if (
         merchantId === undefined ||
         merchantId === null ||
-        merchantId === ""
-    ) {
-
-        throw new BadRequestError(
-            "Merchant ID is required."
-        );
-
-    }
-
-    if (
-        !Number.isInteger(
-            Number(merchantId)
-        ) ||
+        !Number.isInteger(Number(merchantId)) ||
         Number(merchantId) <= 0
     ) {
 
         throw new BadRequestError(
-            "Invalid merchant ID."
+            "Valid merchant id is required."
         );
 
     }
 
-    // ==========================================
-    // Currency
-    // ==========================================
-
-    validateCurrency(currency);
-
 };
 
 
-// ==================================================
+// ==========================================================
 // Validate Wallet Exists
-// ==================================================
+// ==========================================================
 
 const validateWalletExists = (
     wallet
@@ -70,13 +50,22 @@ const validateWalletExists = (
 };
 
 
-// ==================================================
+// ==========================================================
 // Validate Wallet Active
-// ==================================================
+// ==========================================================
 
 const validateWalletActive = (
     wallet
 ) => {
+
+    if (!wallet) {
+
+        throw new BadRequestError(
+            "Wallet not found."
+        );
+
+    }
+
 
     if (
         wallet.wallet_status !== "ACTIVE"
@@ -91,20 +80,31 @@ const validateWalletActive = (
 };
 
 
-// ==================================================
-// Validate Wallet Blocked
-// ==================================================
+// ==========================================================
+// Validate Wallet Ownership
+// ==========================================================
 
-const validateWalletBlocked = (
+const validateWalletOwnership = (
+    merchantId,
     wallet
 ) => {
 
+    if (!wallet) {
+
+        throw new BadRequestError(
+            "Wallet not found."
+        );
+
+    }
+
+
     if (
-        wallet.wallet_status === "BLOCKED"
+        Number(wallet.merchant_id) !==
+        Number(merchantId)
     ) {
 
-        throw new ConflictError(
-            "Wallet is already blocked."
+        throw new UnauthorizedError(
+            "Wallet does not belong to merchant."
         );
 
     }
@@ -112,38 +112,23 @@ const validateWalletBlocked = (
 };
 
 
-// ==================================================
-// Validate Wallet Unblock
-// ==================================================
-
-const validateWalletUnblock = (
-    wallet
-) => {
-
-    if (
-        wallet.wallet_status === "ACTIVE"
-    ) {
-
-        throw new ConflictError(
-            "Wallet is already active."
-        );
-
-    }
-
-};
-
-
-// ==================================================
+// ==========================================================
 // Validate Credit Amount
-// ==================================================
+// ==========================================================
 
 const validateCreditAmount = (
     amount
 ) => {
 
+    const normalizedAmount =
+        Number(amount);
+
+
     if (
-        !amount ||
-        Number(amount) <= 0
+        amount === undefined ||
+        amount === null ||
+        !Number.isFinite(normalizedAmount) ||
+        normalizedAmount <= 0
     ) {
 
         throw new BadRequestError(
@@ -155,17 +140,23 @@ const validateCreditAmount = (
 };
 
 
-// ==================================================
+// ==========================================================
 // Validate Debit Amount
-// ==================================================
+// ==========================================================
 
 const validateDebitAmount = (
     amount
 ) => {
 
+    const normalizedAmount =
+        Number(amount);
+
+
     if (
-        !amount ||
-        Number(amount) <= 0
+        amount === undefined ||
+        amount === null ||
+        !Number.isFinite(normalizedAmount) ||
+        normalizedAmount <= 0
     ) {
 
         throw new BadRequestError(
@@ -177,18 +168,36 @@ const validateDebitAmount = (
 };
 
 
-// ==================================================
-// Validate Available Balance
-// ==================================================
+// ==========================================================
+// Validate Sufficient Balance
+// ==========================================================
 
 const validateSufficientBalance = (
     availableBalance,
     debitAmount
 ) => {
 
+    const balance =
+        Number(availableBalance);
+
+    const amount =
+        Number(debitAmount);
+
+
     if (
-        Number(debitAmount) >
-        Number(availableBalance)
+        !Number.isFinite(balance) ||
+        !Number.isFinite(amount)
+    ) {
+
+        throw new BadRequestError(
+            "Invalid wallet balance or debit amount."
+        );
+
+    }
+
+
+    if (
+        amount > balance
     ) {
 
         throw new ConflictError(
@@ -200,20 +209,25 @@ const validateSufficientBalance = (
 };
 
 
-// ==================================================
-// Validate Pending Balance Release
-// ==================================================
+// ==========================================================
+// Validate Pending Balance
+// ==========================================================
 
 const validatePendingBalance = (
     pendingBalance
 ) => {
 
+    const amount =
+        Number(pendingBalance);
+
+
     if (
-        Number(pendingBalance) <= 0
+        !Number.isFinite(amount) ||
+        amount <= 0
     ) {
 
         throw new ConflictError(
-            "No pending balance available for release."
+            "No pending balance available."
         );
 
     }
@@ -221,47 +235,41 @@ const validatePendingBalance = (
 };
 
 
-// ==================================================
-// Validate Merchant Ownership
-// ==================================================
+// ==========================================================
+// Validate Block Amount
+// ==========================================================
 
-const validateWalletOwnership = (
-    merchantId,
-    wallet
+const validateBlockAmount = (
+    availableBalance,
+    amount
 ) => {
 
-    if (
-        Number(wallet.merchant_id) !==
-        Number(merchantId)
-    ) {
+    const balance =
+        Number(availableBalance);
 
-        throw new ConflictError(
-            "Wallet does not belong to merchant."
-        );
+    const blockAmount =
+        Number(amount);
 
-    }
-
-};
-
-
-// ==================================================
-// Validate Currency
-// ==================================================
-
-const validateCurrency = (
-    currency
-) => {
-
-    const allowedCurrencies = [
-        "INR"
-    ];
 
     if (
-        !allowedCurrencies.includes(currency)
+        !Number.isFinite(balance) ||
+        !Number.isFinite(blockAmount) ||
+        blockAmount <= 0
     ) {
 
         throw new BadRequestError(
-            "Unsupported wallet currency."
+            "Invalid block amount."
+        );
+
+    }
+
+
+    if (
+        blockAmount > balance
+    ) {
+
+        throw new ConflictError(
+            "Block amount exceeds available balance."
         );
 
     }
@@ -269,9 +277,150 @@ const validateCurrency = (
 };
 
 
-// ==================================================
+// ==========================================================
+// Validate Unblock Amount
+// ==========================================================
+
+const validateUnblockAmount = (
+    blockedBalance,
+    amount
+) => {
+
+    const balance =
+        Number(blockedBalance);
+
+    const unblockAmount =
+        Number(amount);
+
+
+    if (
+        !Number.isFinite(balance) ||
+        !Number.isFinite(unblockAmount) ||
+        unblockAmount <= 0
+    ) {
+
+        throw new BadRequestError(
+            "Invalid unblock amount."
+        );
+
+    }
+
+
+    if (
+        unblockAmount > balance
+    ) {
+
+        throw new ConflictError(
+            "Unblock amount exceeds blocked balance."
+        );
+
+    }
+
+};
+
+
+// ==========================================================
+// Validate Idempotency Key
+// ==========================================================
+
+const validateIdempotencyKey = (
+    key
+) => {
+
+    if (
+        typeof key !== "string"
+    ) {
+
+        throw new BadRequestError(
+            "Idempotency key is required."
+        );
+
+    }
+
+
+    const normalizedKey =
+        key.trim();
+
+
+    if (
+        !normalizedKey
+    ) {
+
+        throw new BadRequestError(
+            "Idempotency key is required."
+        );
+
+    }
+
+
+    if (
+        normalizedKey.length > 100
+    ) {
+
+        throw new BadRequestError(
+            "Idempotency key must not exceed 100 characters."
+        );
+
+    }
+
+
+    return normalizedKey;
+
+};
+
+
+// ==========================================================
+// Validate Pagination
+// ==========================================================
+
+const validatePagination = (
+    page,
+    limit
+) => {
+
+    if (
+        page !== undefined &&
+        page !== null
+    ) {
+
+        if (
+            !Number.isInteger(Number(page)) ||
+            Number(page) <= 0
+        ) {
+
+            throw new BadRequestError(
+                "Invalid page number."
+            );
+
+        }
+
+    }
+
+
+    if (
+        limit !== undefined &&
+        limit !== null
+    ) {
+
+        if (
+            !Number.isInteger(Number(limit)) ||
+            Number(limit) <= 0
+        ) {
+
+            throw new BadRequestError(
+                "Invalid limit."
+            );
+
+        }
+
+    }
+
+};
+
+
+// ==========================================================
 // Export
-// ==================================================
+// ==========================================================
 
 module.exports = {
 
@@ -281,9 +430,7 @@ module.exports = {
 
     validateWalletActive,
 
-    validateWalletBlocked,
-
-    validateWalletUnblock,
+    validateWalletOwnership,
 
     validateCreditAmount,
 
@@ -293,8 +440,12 @@ module.exports = {
 
     validatePendingBalance,
 
-    validateWalletOwnership,
+    validateBlockAmount,
 
-    validateCurrency
+    validateUnblockAmount,
+
+    validateIdempotencyKey,
+
+    validatePagination
 
 };

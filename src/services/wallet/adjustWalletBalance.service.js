@@ -409,12 +409,14 @@ const adjustWalletBalanceService = async (
             amount,
 
 
-            performedBy,
+            performedBy: req.admin.admin_id,
 
 
             performerType:
 
                 WALLET_PERFORMER_TYPE.ADMIN,
+
+
 
 
             remarks:

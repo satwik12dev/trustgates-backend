@@ -1,6 +1,4 @@
-const WALLET_LEDGER_QUERIES = require(
-    "../../../queries/wallet/walletLedger.query"
-);
+const WALLET_LEDGER_QUERIES = require("../../../queries/wallet/walletLedger.query");
 
 const {
     validateLedgerEntry,
@@ -8,28 +6,7 @@ const {
     validateLedgerSource,
     validateReferenceType,
     validateLedgerStatus
-} = require(
-    "../../../validations/wallet/walletLedger.validation"
-);
-
-
-// ==========================================================
-// Create Ledger Entry
-// ==========================================================
-//
-// Financial record:
-//
-// amount       = actual transaction amount
-// feeAmount    = applicable fee
-// totalAmount  = amount + feeAmount
-//
-// Example:
-//
-// amount       = 1000
-// feeAmount    = 20
-// totalAmount  = 1020
-//
-// ==========================================================
+} = require("../../../validations/wallet/walletLedger.validation");
 
 const createLedgerEntry = async (
     connection,
@@ -39,6 +16,7 @@ const createLedgerEntry = async (
     const {
         walletId,
         merchantId,
+
         transactionType,
         source,
 
@@ -72,10 +50,8 @@ const createLedgerEntry = async (
     const normalizedAmount =
         Number(amount);
 
-
     const normalizedFeeAmount =
         Number(feeAmount);
-
 
     const normalizedTotalAmount =
         totalAmount !== undefined &&
@@ -88,11 +64,13 @@ const createLedgerEntry = async (
 
 
     // ======================================================
-    // Validate Amounts
+    // Validate Amount
     // ======================================================
 
     if (
-        !Number.isFinite(normalizedAmount) ||
+        !Number.isFinite(
+            normalizedAmount
+        ) ||
         normalizedAmount <= 0
     ) {
 
@@ -103,8 +81,14 @@ const createLedgerEntry = async (
     }
 
 
+    // ======================================================
+    // Validate Fee
+    // ======================================================
+
     if (
-        !Number.isFinite(normalizedFeeAmount) ||
+        !Number.isFinite(
+            normalizedFeeAmount
+        ) ||
         normalizedFeeAmount < 0
     ) {
 
@@ -115,8 +99,14 @@ const createLedgerEntry = async (
     }
 
 
+    // ======================================================
+    // Validate Total Amount
+    // ======================================================
+
     if (
-        !Number.isFinite(normalizedTotalAmount) ||
+        !Number.isFinite(
+            normalizedTotalAmount
+        ) ||
         normalizedTotalAmount <= 0
     ) {
 
@@ -128,7 +118,10 @@ const createLedgerEntry = async (
 
 
     // ======================================================
-    // Ensure Total = Amount + Fee
+    // Ensure:
+    //
+    // totalAmount = amount + feeAmount
+    //
     // ======================================================
 
     const expectedTotal =
@@ -173,7 +166,7 @@ const createLedgerEntry = async (
 
 
     // ======================================================
-    // Validate Enums
+    // Validate Transaction Type
     // ======================================================
 
     validateTransactionType(
@@ -181,15 +174,27 @@ const createLedgerEntry = async (
     );
 
 
+    // ======================================================
+    // Validate Source
+    // ======================================================
+
     validateLedgerSource(
         source
     );
 
 
+    // ======================================================
+    // Validate Reference Type
+    // ======================================================
+
     validateReferenceType(
         referenceType
     );
 
+
+    // ======================================================
+    // Validate Status
+    // ======================================================
 
     validateLedgerStatus(
         status
@@ -197,7 +202,7 @@ const createLedgerEntry = async (
 
 
     // ======================================================
-    // Insert Ledger Entry
+    // Create Wallet Transaction
     // ======================================================
 
     const [
@@ -205,7 +210,7 @@ const createLedgerEntry = async (
     ] = await connection.query(
 
         WALLET_LEDGER_QUERIES
-            .CREATE_LEDGER_ENTRY,
+            .CREATE_TRANSACTION,
 
         [
 
@@ -237,7 +242,9 @@ const createLedgerEntry = async (
 
             description,
 
-            JSON.stringify(metadata)
+            JSON.stringify(
+                metadata
+            )
 
         ]
 
@@ -249,17 +256,27 @@ const createLedgerEntry = async (
 };
 
 
-// ==========================================================
-// Check Idempotency
-// ==========================================================
-
 const getLedgerByIdempotencyKey = async (
     connection,
     idempotencyKey
 ) => {
 
     if (
-        !idempotencyKey
+        !idempotencyKey ||
+        typeof idempotencyKey !== "string"
+    ) {
+
+        return null;
+
+    }
+
+
+    const normalizedKey =
+        idempotencyKey.trim();
+
+
+    if (
+        !normalizedKey
     ) {
 
         return null;
@@ -272,10 +289,12 @@ const getLedgerByIdempotencyKey = async (
     ] = await connection.query(
 
         WALLET_LEDGER_QUERIES
-            .CHECK_IDEMPOTENCY_KEY,
+            .GET_BY_IDEMPOTENCY_KEY,
 
         [
-            idempotencyKey
+
+            normalizedKey
+
         ]
 
     );
@@ -286,11 +305,6 @@ const getLedgerByIdempotencyKey = async (
         : null;
 
 };
-
-
-// ==========================================================
-// Get Wallet Ledger
-// ==========================================================
 
 const getWalletLedger = async (
     connection,
@@ -306,7 +320,7 @@ const getWalletLedger = async (
     ] = await connection.query(
 
         WALLET_LEDGER_QUERIES
-            .GET_WALLET_LEDGER,
+            .GET_WALLET_TRANSACTIONS,
 
         [
 
@@ -326,10 +340,6 @@ const getWalletLedger = async (
 };
 
 
-// ==========================================================
-// Get Merchant Ledger
-// ==========================================================
-
 const getMerchantLedger = async (
     connection,
     {
@@ -344,7 +354,7 @@ const getMerchantLedger = async (
     ] = await connection.query(
 
         WALLET_LEDGER_QUERIES
-            .GET_MERCHANT_LEDGER,
+            .GET_MERCHANT_TRANSACTIONS,
 
         [
 
@@ -364,18 +374,99 @@ const getMerchantLedger = async (
 };
 
 
-// ==========================================================
-// Export
-// ==========================================================
+const getLedgerByReference = async (
+    connection,
+    {
+        merchantId,
+        referenceType,
+        referenceId
+    }
+) => {
+
+    if (
+        !merchantId ||
+        !referenceType ||
+        !referenceId
+    ) {
+
+        return null;
+
+    }
+
+
+    const [
+        rows
+    ] = await connection.query(
+
+        WALLET_LEDGER_QUERIES
+            .GET_BY_REFERENCE,
+
+        [
+
+            merchantId,
+
+            referenceType,
+
+            referenceId
+
+        ]
+
+    );
+
+
+    return rows.length
+        ? rows[0]
+        : null;
+
+};
+
+const updateLedgerStatus = async (
+    connection,
+    {
+        ledgerId,
+        status,
+        description,
+        metadata
+    }
+) => {
+
+    const [
+        result
+    ] = await connection.query(
+
+        WALLET_LEDGER_QUERIES
+            .UPDATE_LEDGER_STATUS,
+
+        [
+
+            status,
+
+            description || null,
+
+            metadata
+                ? JSON.stringify(
+                    metadata
+                )
+                : null,
+
+            ledgerId
+
+        ]
+
+    );
+
+
+    return (
+        result.affectedRows === 1
+    );
+
+};
 
 module.exports = {
-
     createLedgerEntry,
-
     getLedgerByIdempotencyKey,
-
+    getLedgerByReference,
+    updateLedgerStatus,
     getWalletLedger,
-
     getMerchantLedger
-
 };

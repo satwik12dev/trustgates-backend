@@ -13,11 +13,11 @@ const {
 
 const {
     validateWalletActive,
-    validateCreditAmount
+    validateCreditAmount,
+    validateIdempotencyKey
 } = require("./helpers/walletValidation.helper");
 
-const WALLET_QUERIES =
-    require("../../queries/wallet/wallet.query");
+const WALLET_QUERIES = require("../../queries/wallet/wallet.query");
 
 const {
     WALLET_TRANSACTION_TYPE,
@@ -28,27 +28,6 @@ const {
 } = require("../../constants/wallet.constants");
 
 
-// ==========================================================
-// Credit Wallet Service
-// ==========================================================
-//
-// PAYMENT SUCCESS
-//
-// available_balance += amount
-// total_received    += amount
-//
-// IMPORTANT:
-//
-// - pending_balance is NOT touched
-// - reserved_balance is NOT touched
-// - blocked_balance is NOT touched
-// - no T+7 release job
-//
-// This service must be called inside an existing DB
-// transaction.
-//
-// ==========================================================
-
 const creditWalletService = async (
     connection,
     {
@@ -56,17 +35,18 @@ const creditWalletService = async (
         amount,
         referenceId,
         idempotencyKey,
-        description = "Wallet credited after successful payment.",
+        description =
+            "Wallet credited after successful payment.",
         metadata = {}
     }
 ) => {
 
-    // ======================================================
-    // 1. Validate Amount
-    // ======================================================
-
     validateCreditAmount(
         amount
+    );
+
+    validateIdempotencyKey(
+        idempotencyKey
     );
 
 
@@ -74,25 +54,34 @@ const creditWalletService = async (
         Number(amount);
 
 
-    // ======================================================
-    // 2. Validate Idempotency Key
-    // ======================================================
-
     if (
-        !idempotencyKey ||
-        typeof idempotencyKey !== "string"
+        typeof referenceId !== "string" ||
+        referenceId.trim().length === 0
     ) {
 
         throw new Error(
-            "Wallet credit idempotency key is required."
+            "Wallet credit reference id is required."
         );
 
     }
 
 
-    // ======================================================
-    // 3. Idempotency Check
-    // ======================================================
+    if (
+        metadata === null ||
+        typeof metadata !== "object" ||
+        Array.isArray(metadata)
+    ) {
+
+        throw new Error(
+            "Wallet credit metadata must be an object."
+        );
+
+    }
+
+
+    const normalizedReferenceId =
+        referenceId.trim();
+
 
     const existingLedger =
         await getLedgerByIdempotencyKey(
@@ -120,25 +109,35 @@ const creditWalletService = async (
             walletId:
                 existingLedger.wallet_id,
 
+            merchantId:
+                existingLedger.merchant_id,
+
             amount:
-                creditAmount,
+                Number(
+                    existingLedger.amount
+                ),
+
+            balance: {
+
+                availableBefore:
+                    Number(
+                        existingLedger.balance_before
+                    ),
+
+                availableAfter:
+                    Number(
+                        existingLedger.balance_after
+                    )
+
+            },
 
             status:
-                "COMPLETED"
+                existingLedger.status
 
         };
 
     }
 
-
-    // ======================================================
-    // 4. Lock Wallet
-    // ======================================================
-    //
-    // FOR UPDATE ensures concurrent payment credits for
-    // the same merchant are serialized.
-    //
-    // ======================================================
 
     const wallet =
         await lockWalletByMerchant(
@@ -150,7 +149,9 @@ const creditWalletService = async (
         );
 
 
-    if (!wallet) {
+    if (
+        !wallet
+    ) {
 
         throw new Error(
             "Merchant wallet not found."
@@ -159,18 +160,10 @@ const creditWalletService = async (
     }
 
 
-    // ======================================================
-    // 5. Validate Wallet
-    // ======================================================
-
     validateWalletActive(
         wallet
     );
 
-
-    // ======================================================
-    // 6. Capture Existing Balance
-    // ======================================================
 
     const availableBefore =
         Number(
@@ -194,19 +187,6 @@ const creditWalletService = async (
         creditAmount;
 
 
-    // ======================================================
-    // 7. Credit Wallet
-    // ======================================================
-    //
-    // Payment SUCCESS:
-    //
-    // available_balance += amount
-    // total_received    += amount
-    //
-    // The query itself performs the atomic update.
-    //
-    // ======================================================
-
     const [
         result
     ] = await connection.query(
@@ -220,7 +200,7 @@ const creditWalletService = async (
 
             creditAmount,
 
-            merchantId
+            wallet.wallet_id
 
         ]
 
@@ -238,15 +218,6 @@ const creditWalletService = async (
     }
 
 
-    // ======================================================
-    // 8. Create Wallet Ledger
-    // ======================================================
-    //
-    // Payment credit is immediately COMPLETED because the
-    // payment has already been confirmed successfully.
-    //
-    // ======================================================
-
     const ledgerId =
         await createLedgerEntry(
 
@@ -257,7 +228,8 @@ const creditWalletService = async (
                 walletId:
                     wallet.wallet_id,
 
-                merchantId,
+                merchantId:
+                    wallet.merchant_id,
 
                 transactionType:
                     WALLET_TRANSACTION_TYPE.CREDIT,
@@ -266,6 +238,12 @@ const creditWalletService = async (
                     WALLET_SOURCE.PAYMENT,
 
                 amount:
+                    creditAmount,
+
+                feeAmount:
+                    0,
+
+                totalAmount:
                     creditAmount,
 
                 balanceBefore:
@@ -277,7 +255,8 @@ const creditWalletService = async (
                 referenceType:
                     WALLET_REFERENCE_TYPE.PAYMENT,
 
-                referenceId,
+                referenceId:
+                    normalizedReferenceId,
 
                 idempotencyKey,
 
@@ -301,10 +280,6 @@ const creditWalletService = async (
         );
 
 
-    // ======================================================
-    // 9. Wallet Audit
-    // ======================================================
-
     await createWalletAuditLog(
 
         connection,
@@ -314,7 +289,8 @@ const creditWalletService = async (
             walletId:
                 wallet.wallet_id,
 
-            merchantId,
+            merchantId:
+                wallet.merchant_id,
 
             action:
                 "WALLET_CREDIT",
@@ -329,11 +305,12 @@ const creditWalletService = async (
                 WALLET_PERFORMER_TYPE.SYSTEM,
 
             remarks:
-                "Wallet credited after successful payment.",
+                description,
 
             metadata: {
 
-                referenceId,
+                referenceId:
+                    normalizedReferenceId,
 
                 ledgerId,
 
@@ -354,10 +331,6 @@ const creditWalletService = async (
     );
 
 
-    // ======================================================
-    // 10. Return
-    // ======================================================
-
     return {
 
         success: true,
@@ -369,7 +342,8 @@ const creditWalletService = async (
         walletId:
             wallet.wallet_id,
 
-        merchantId,
+        merchantId:
+            wallet.merchant_id,
 
         amount:
             creditAmount,
@@ -387,15 +361,10 @@ const creditWalletService = async (
         },
 
         status:
-            "COMPLETED"
+            WALLET_LEDGER_STATUS.COMPLETED
 
     };
 
 };
-
-
-// ==========================================================
-// Export
-// ==========================================================
 
 module.exports = creditWalletService;

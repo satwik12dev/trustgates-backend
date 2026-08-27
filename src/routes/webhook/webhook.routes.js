@@ -3,42 +3,30 @@ const express = require("express");
 const router = express.Router();
 
 const {
+    receiveRazorpayWebhook
+} = require(
+    "../../controller/webhook/webhook.controller"
+);
 
-    razorpayWebhook
-
-} = require("../../controller/webhook/razorpayWebhook.controller");
 
 const {
-
-    refundWebhookController
-
-} = require("../../controller/refund/webhook/webhookRefund.controller");
-
-
-
-// ==========================================================
-// Razorpay Webhook
-// ==========================================================
+    processWebhookEventController
+} = require(
+    "../../controller/webhook/processWebhookEvent.controller"
+);
 
 router.post(
-    "/razorpay",
+    "/razorpay/:webhookId",
     express.raw({
         type: "application/json"
     }),
-    razorpayWebhook
+    receiveRazorpayWebhook
 );
 
-// ==========================================================
-// Razorpay Refund Webhook
-// ==========================================================
+
 
 router.post(
-    "/razorpay/refund",
-    express.raw({ type: "application/json" }),
-    refundWebhookController
+    "/process/:provider/:eventId",
+    processWebhookEventController
 );
-// ==========================================================
-// Export
-// ==========================================================
-
 module.exports = router;

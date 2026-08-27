@@ -1,71 +1,6 @@
-const WALLET_LEDGER_QUERIES = {
+const WALLET_TRANSACTION_QUERIES = {
 
-    // ==========================================================
-    // Create Ledger Entry
-    // ==========================================================
-
-    CREATE_LEDGER_ENTRY: `
-
-        INSERT INTO wallet_transactions
-        (
-            wallet_id,
-            merchant_id,
-
-            transaction_type,
-            source,
-
-            amount,
-            fee_amount,
-            total_amount,
-
-            balance_before,
-            balance_after,
-
-            reference_type,
-            reference_id,
-
-            idempotency_key,
-
-            status,
-
-            description,
-            metadata
-        )
-
-        VALUES
-        (
-            ?,
-            ?,
-
-            ?,
-            ?,
-
-            ?,
-            ?,
-            ?,
-
-            ?,
-            ?,
-
-            ?,
-            ?,
-
-            ?,
-
-            ?,
-
-            ?,
-            ?
-        )
-
-    `,
-
-
-    // ==========================================================
-    // Get Wallet Ledger
-    // ==========================================================
-
-    GET_WALLET_LEDGER: `
+    GET_BY_IDEMPOTENCY_KEY: `
 
         SELECT
 
@@ -94,68 +29,17 @@ const WALLET_LEDGER_QUERIES = {
             description,
             metadata,
 
-            created_at
+            created_at,
+            updated_at
 
         FROM wallet_transactions
 
-        WHERE wallet_id = ?
-
-        ORDER BY created_at DESC
-
-        LIMIT ?
-
-        OFFSET ?
-
-    `,
-
-
-    // ==========================================================
-    // Get Ledger By ID
-    // ==========================================================
-
-    GET_LEDGER_BY_ID: `
-
-        SELECT
-
-            wallet_transaction_id,
-
-            wallet_id,
-            merchant_id,
-
-            transaction_type,
-            source,
-
-            amount,
-            fee_amount,
-            total_amount,
-
-            balance_before,
-            balance_after,
-
-            reference_type,
-            reference_id,
-
-            idempotency_key,
-
-            status,
-
-            description,
-            metadata,
-
-            created_at
-
-        FROM wallet_transactions
-
-        WHERE wallet_transaction_id = ?
+        WHERE idempotency_key = ?
 
         LIMIT 1
 
     `,
 
-
-    // ==========================================================
-    // Get Ledger By Reference
-    // ==========================================================
 
     GET_BY_REFERENCE: `
 
@@ -186,25 +70,86 @@ const WALLET_LEDGER_QUERIES = {
             description,
             metadata,
 
-            created_at
+            created_at,
+            updated_at
 
         FROM wallet_transactions
 
-        WHERE reference_type = ?
+        WHERE merchant_id = ?
+
+          AND reference_type = ?
 
           AND reference_id = ?
 
-        ORDER BY created_at DESC
+        ORDER BY wallet_transaction_id DESC
+
+        LIMIT 1
 
     `,
 
 
-    // ==========================================================
-    // Check Duplicate Ledger
-    // Idempotency Protection
-    // ==========================================================
+    CREATE_TRANSACTION: `
 
-    CHECK_IDEMPOTENCY_KEY: `
+        INSERT INTO wallet_transactions
+        (
+
+            wallet_id,
+            merchant_id,
+
+            transaction_type,
+            source,
+
+            amount,
+            fee_amount,
+            total_amount,
+
+            balance_before,
+            balance_after,
+
+            reference_type,
+            reference_id,
+
+            idempotency_key,
+
+            status,
+
+            description,
+            metadata
+
+        )
+
+        VALUES
+        (
+
+            ?,
+            ?,
+
+            ?,
+            ?,
+
+            ?,
+            ?,
+            ?,
+
+            ?,
+            ?,
+
+            ?,
+            ?,
+
+            ?,
+
+            ?,
+
+            ?,
+            ?
+
+        )
+
+    `,
+
+
+    GET_WALLET_TRANSACTIONS: `
 
         SELECT
 
@@ -233,23 +178,64 @@ const WALLET_LEDGER_QUERIES = {
             description,
             metadata,
 
-            created_at
+            created_at,
+            updated_at
 
         FROM wallet_transactions
 
-        WHERE idempotency_key = ?
+        WHERE wallet_id = ?
+
+        ORDER BY wallet_transaction_id DESC
+
+        LIMIT ?
+
+        OFFSET ?
+
+    `,
+
+
+    GET_TRANSACTION_BY_ID: `
+
+        SELECT
+
+            wallet_transaction_id,
+
+            wallet_id,
+            merchant_id,
+
+            transaction_type,
+            source,
+
+            amount,
+            fee_amount,
+            total_amount,
+
+            balance_before,
+            balance_after,
+
+            reference_type,
+            reference_id,
+
+            idempotency_key,
+
+            status,
+
+            description,
+            metadata,
+
+            created_at,
+            updated_at
+
+        FROM wallet_transactions
+
+        WHERE wallet_transaction_id = ?
 
         LIMIT 1
 
     `,
 
 
-    // ==========================================================
-    // Get Merchant Ledger
-    // Admin / CMS
-    // ==========================================================
-
-    GET_MERCHANT_LEDGER: `
+    GET_MERCHANT_TRANSACTIONS: `
 
         SELECT
 
@@ -278,13 +264,14 @@ const WALLET_LEDGER_QUERIES = {
             wt.description,
             wt.metadata,
 
-            wt.created_at
+            wt.created_at,
+            wt.updated_at
 
         FROM wallet_transactions wt
 
         WHERE wt.merchant_id = ?
 
-        ORDER BY wt.created_at DESC
+        ORDER BY wt.wallet_transaction_id DESC
 
         LIMIT ?
 
@@ -292,10 +279,6 @@ const WALLET_LEDGER_QUERIES = {
 
     `,
 
-
-    // ==========================================================
-    // Get Total Credit
-    // ==========================================================
 
     GET_TOTAL_CREDIT: `
 
@@ -317,21 +300,6 @@ const WALLET_LEDGER_QUERIES = {
     `,
 
 
-    // ==========================================================
-    // Get Total Debit
-    // ==========================================================
-    //
-    // Uses total_amount because actual wallet movement
-    // includes refund fee.
-    //
-    // Example:
-    //
-    // Refund     = 1000
-    // Fee        = 20
-    // Total debit = 1020
-    //
-    // ==========================================================
-
     GET_TOTAL_DEBIT: `
 
         SELECT
@@ -351,15 +319,6 @@ const WALLET_LEDGER_QUERIES = {
 
     `,
 
-
-    // ==========================================================
-    // Get Total Refund Amount
-    // ==========================================================
-    //
-    // Actual refund amount only.
-    // Fee is NOT included here.
-    //
-    // ==========================================================
 
     GET_TOTAL_REFUND_AMOUNT: `
 
@@ -383,10 +342,6 @@ const WALLET_LEDGER_QUERIES = {
     `,
 
 
-    // ==========================================================
-    // Get Total Refund Fees
-    // ==========================================================
-
     GET_TOTAL_REFUND_FEES: `
 
         SELECT
@@ -409,23 +364,15 @@ const WALLET_LEDGER_QUERIES = {
     `,
 
 
-    // ==========================================================
-    // Reverse Ledger Entry
-    // ==========================================================
-    //
-    // Used when refund fails.
-    //
-    // PENDING → REVERSED
-    //
-    // ==========================================================
-
-    MARK_REVERSED: `
+    MARK_COMPLETED: `
 
         UPDATE wallet_transactions
 
         SET
 
-            status = 'REVERSED'
+            status = 'COMPLETED',
+
+            updated_at = NOW()
 
         WHERE wallet_transaction_id = ?
 
@@ -436,23 +383,34 @@ const WALLET_LEDGER_QUERIES = {
     `,
 
 
-    // ==========================================================
-    // Mark Ledger Completed
-    // ==========================================================
-    //
-    // Used when refund succeeds.
-    //
-    // PENDING → COMPLETED
-    //
-    // ==========================================================
-
-    MARK_COMPLETED: `
+    MARK_FAILED: `
 
         UPDATE wallet_transactions
 
         SET
 
-            status = 'COMPLETED'
+            status = 'FAILED',
+
+            updated_at = NOW()
+
+        WHERE wallet_transaction_id = ?
+
+          AND status = 'PENDING'
+
+        LIMIT 1
+
+    `,
+
+
+    MARK_REVERSED: `
+
+        UPDATE wallet_transactions
+
+        SET
+
+            status = 'REVERSED',
+
+            updated_at = NOW()
 
         WHERE wallet_transaction_id = ?
 
@@ -466,4 +424,4 @@ const WALLET_LEDGER_QUERIES = {
 
 
 module.exports =
-    WALLET_LEDGER_QUERIES;
+    WALLET_TRANSACTION_QUERIES;

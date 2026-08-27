@@ -1,28 +1,42 @@
-// ==================================================
-// Wallet Status
-// ==================================================
-
 const WALLET_STATUS = {
+
     ACTIVE: "ACTIVE",
+
     BLOCKED: "BLOCKED",
+
     SUSPENDED: "SUSPENDED"
+
 };
+
 
 const WALLET_TRANSACTION_TYPE = {
+
     CREDIT: "CREDIT",
+
     DEBIT: "DEBIT"
+
 };
+
 
 const WALLET_SOURCE = {
+
     PAYMENT: "PAYMENT",
+
     REFUND: "REFUND",
+
     SETTLEMENT: "SETTLEMENT",
+
     FEE: "FEE",
+
     ADJUSTMENT: "ADJUSTMENT"
+
 };
 
+
 const WALLET_LEDGER_STATUS = {
+
     PENDING: "PENDING",
+
     COMPLETED: "COMPLETED",
 
     FAILED: "FAILED",
@@ -32,10 +46,9 @@ const WALLET_LEDGER_STATUS = {
 };
 
 
+const WALLET_TRANSACTION_STATUS =
+    WALLET_LEDGER_STATUS;
 
-// ==================================================
-// Wallet Balance Type
-// ==================================================
 
 const WALLET_BALANCE_TYPE = {
 
@@ -43,15 +56,12 @@ const WALLET_BALANCE_TYPE = {
 
     PENDING: "PENDING",
 
+    RESERVED: "RESERVED",
+
     BLOCKED: "BLOCKED"
 
 };
 
-
-
-// ==================================================
-// Wallet Performer Type
-// ==================================================
 
 const WALLET_PERFORMER_TYPE = {
 
@@ -63,11 +73,6 @@ const WALLET_PERFORMER_TYPE = {
 
 };
 
-
-
-// ==================================================
-// Wallet Reference Type
-// ==================================================
 
 const WALLET_REFERENCE_TYPE = {
 
@@ -84,33 +89,22 @@ const WALLET_REFERENCE_TYPE = {
 };
 
 
-
-// ==================================================
-// Export
-// ==================================================
-
 module.exports = {
-
 
     WALLET_STATUS,
 
-
     WALLET_TRANSACTION_TYPE,
-
 
     WALLET_SOURCE,
 
-
     WALLET_LEDGER_STATUS,
 
+    WALLET_TRANSACTION_STATUS,
 
     WALLET_BALANCE_TYPE,
 
-
     WALLET_PERFORMER_TYPE,
 
-
     WALLET_REFERENCE_TYPE
-
 
 };
