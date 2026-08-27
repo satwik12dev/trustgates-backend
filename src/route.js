@@ -27,11 +27,12 @@ route.use(helmet({
     })
 );
 
-const allowedOrigins = [
-    "http://localhost:5173",
-    "https://trustgates.co.in"
-];
-
+ const allowedOrigins = [
+     "http://localhost:5173",
+     "https://trustgates.co.in",
+     "https://www.trustgates.co.in"
+ ];
+ 
 route.use(cors({
     origin: (origin, callback) => {
 
