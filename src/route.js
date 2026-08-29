@@ -92,8 +92,6 @@ const errorHandler = require("./middleware/error.middleware")
 // 1. Rejects blocked IPs before processing any route
 route.use(ipCheckMiddleware);
 route.use(globalRateLimiter)
-// 2. Applies Universal Rate Limiter to EVERY API request & blocks IP if breached
-route.use(apiRateLimiter);
 
 
 route.use("/api/webhooks",webhookRoutes);
