@@ -13,6 +13,10 @@ const {
 );
 
 
+// ==========================================================
+// Admin Wallet Analytics Service
+// ==========================================================
+
 const getAdminWalletAnalyticsService = async (
     connection,
     {
@@ -70,6 +74,24 @@ const getAdminWalletAnalyticsService = async (
 
 
     // ======================================================
+    // Validate Recent Limit
+    // ======================================================
+
+    const parsedRecentLimit =
+        Number(recentLimit);
+
+    if (
+        !Number.isInteger(parsedRecentLimit) ||
+        parsedRecentLimit < 1 ||
+        parsedRecentLimit > 100
+    ) {
+        throw new Error(
+            "recentLimit must be between 1 and 100."
+        );
+    }
+
+
+    // ======================================================
     // Exclusive End Date
     // ======================================================
 
@@ -82,83 +104,26 @@ const getAdminWalletAnalyticsService = async (
         endDate.getDate() + 1
     );
 
-    const queryDateTo =
-        endDate
-            .toISOString()
-            .slice(0, 19)
-            .replace("T", " ");
-
 
     const queryDateFrom =
         `${finalDateFrom} 00:00:00`;
 
 
+    const queryDateTo =
+        `${endDate
+            .toISOString()
+            .slice(0, 10)
+        } 00:00:00`;
+
+
     // ======================================================
-    // Fetch Analytics
+    // Fetch Admin Wallet
     // ======================================================
 
-    const [
-        wallet,
-        summary,
-        feeRevenue,
-        sourceRevenue,
-        merchantRevenue,
-        refundFees,
-        dailyRevenue,
-        recentTransactions,
-        reconciliation
-    ] = await Promise.all([
-
-        getAdminWallet(
+    const wallet =
+        await getAdminWallet(
             connection
-        ),
-
-        getAdminWalletSummary(
-            connection,
-            queryDateFrom,
-            queryDateTo
-        ),
-
-        getFeeRevenue(
-            connection,
-            queryDateFrom,
-            queryDateTo
-        ),
-
-        getSourceRevenue(
-            connection,
-            queryDateFrom,
-            queryDateTo
-        ),
-
-        getMerchantRevenue(
-            connection,
-            queryDateFrom,
-            queryDateTo
-        ),
-
-        getRefundFeeAnalytics(
-            connection,
-            queryDateFrom,
-            queryDateTo
-        ),
-
-        getDailyRevenue(
-            connection,
-            queryDateFrom,
-            queryDateTo
-        ),
-
-        getRecentTransactions(
-            connection,
-            recentLimit
-        ),
-
-        getReconciliation(
-            connection
-        )
-
-    ]);
+        );
 
 
     if (!wallet) {
@@ -171,19 +136,139 @@ const getAdminWalletAnalyticsService = async (
 
 
     // ======================================================
+    // Admin Wallet ID
+    // ======================================================
+
+    const adminWalletId =
+        Number(
+            wallet.admin_wallet_id
+        );
+
+
+    // ======================================================
+    // Fetch Analytics
+    // ======================================================
+
+    const [
+        summary,
+        feeRevenue,
+        sourceRevenue,
+        merchantRevenue,
+        refundFees,
+        dailyRevenue,
+        recentTransactions,
+        reconciliation
+    ] = await Promise.all([
+
+        // ----------------------------------------------
+        // Summary
+        // ----------------------------------------------
+
+        getAdminWalletSummary(
+            connection,
+            queryDateFrom,
+            queryDateTo
+        ),
+
+
+        // ----------------------------------------------
+        // Fee Revenue
+        // ----------------------------------------------
+
+        getFeeRevenue(
+            connection,
+            queryDateFrom,
+            queryDateTo
+        ),
+
+
+        // ----------------------------------------------
+        // Source Revenue
+        // ----------------------------------------------
+
+        getSourceRevenue(
+            connection,
+            queryDateFrom,
+            queryDateTo
+        ),
+
+
+        // ----------------------------------------------
+        // Merchant Revenue
+        // ----------------------------------------------
+
+        getMerchantRevenue(
+            connection,
+            queryDateFrom,
+            queryDateTo
+        ),
+
+
+        // ----------------------------------------------
+        // Refund Fees
+        // ----------------------------------------------
+
+        getRefundFeeAnalytics(
+            connection,
+            queryDateFrom,
+            queryDateTo
+        ),
+
+
+        // ----------------------------------------------
+        // Daily Revenue
+        // ----------------------------------------------
+
+        getDailyRevenue(
+            connection,
+            queryDateFrom,
+            queryDateTo
+        ),
+
+
+        // ----------------------------------------------
+        // Recent Transactions
+        // ----------------------------------------------
+
+        getRecentTransactions(
+            connection,
+            queryDateFrom,
+            queryDateTo,
+            parsedRecentLimit
+        ),
+
+
+        // ----------------------------------------------
+        // Reconciliation
+        // ----------------------------------------------
+
+        getReconciliation(
+            connection,
+            adminWalletId
+        )
+
+    ]);
+
+
+    // ======================================================
+    // Current Wallet Balance
+    // ======================================================
+
+    const currentBalance =
+        Number(
+            wallet.balance
+        );
+
+
+    // ======================================================
     // Reconciliation
     // ======================================================
 
     const calculatedBalance =
         Number(
-            reconciliation.total_credits
-        ) -
-        Number(
-            reconciliation.total_debits
+            reconciliation.calculated_balance || 0
         );
 
-    const currentBalance =
-        Number(wallet.balance);
 
     const difference =
         currentBalance -
@@ -207,10 +292,14 @@ const getAdminWalletAnalyticsService = async (
         },
 
 
+        // ==================================================
+        // Wallet
+        // ==================================================
+
         wallet: {
 
             adminWalletId:
-                wallet.admin_wallet_id,
+                adminWalletId,
 
             balance:
                 currentBalance,
@@ -224,88 +313,104 @@ const getAdminWalletAnalyticsService = async (
         },
 
 
+        // ==================================================
+        // Summary
+        // ==================================================
+
         summary: {
 
             totalCredits:
                 Number(
-                    summary.total_credits
+                    summary.total_credits || 0
                 ),
 
             totalDebits:
                 Number(
-                    summary.total_debits
+                    summary.total_debits || 0
                 ),
 
             netMovement:
                 Number(
-                    summary.total_credits
+                    summary.total_credits || 0
                 ) -
                 Number(
-                    summary.total_debits
+                    summary.total_debits || 0
                 ),
 
             completedTransactions:
                 Number(
-                    summary.completed_transactions
+                    summary.completed_transactions || 0
                 ),
 
             pendingTransactions:
                 Number(
-                    summary.pending_transactions
+                    summary.pending_transactions || 0
                 ),
 
             failedTransactions:
                 Number(
-                    summary.failed_transactions
+                    summary.failed_transactions || 0
                 ),
 
             reversedTransactions:
                 Number(
-                    summary.reversed_transactions
+                    summary.reversed_transactions || 0
                 )
 
         },
 
+
+        // ==================================================
+        // Revenue
+        // ==================================================
 
         revenue: {
 
             total:
                 Number(
-                    feeRevenue.total_fee_revenue
+                    feeRevenue.total_fee_revenue || 0
                 ),
 
             transactionCount:
                 Number(
-                    feeRevenue.fee_transaction_count
+                    feeRevenue.fee_transaction_count || 0
                 ),
 
             averageFee:
                 Number(
-                    feeRevenue.average_fee
+                    feeRevenue.average_fee || 0
                 )
 
         },
 
+
+        // ==================================================
+        // Refund Fees
+        // ==================================================
 
         refundFees: {
 
             total:
                 Number(
-                    refundFees.refund_fee_revenue
+                    refundFees.refund_fee_revenue || 0
                 ),
 
             transactionCount:
                 Number(
-                    refundFees.refund_fee_transactions
+                    refundFees.refund_fee_transactions || 0
                 ),
 
             averageFee:
                 Number(
-                    refundFees.average_refund_fee
+                    refundFees.average_refund_fee || 0
                 )
 
         },
 
+
+        // ==================================================
+        // Source Revenue
+        // ==================================================
 
         sourceRevenue:
             sourceRevenue.map(
@@ -316,17 +421,21 @@ const getAdminWalletAnalyticsService = async (
 
                     revenue:
                         Number(
-                            row.revenue
+                            row.revenue || 0
                         ),
 
                     transactionCount:
                         Number(
-                            row.transaction_count
+                            row.transaction_count || 0
                         )
 
                 })
             ),
 
+
+        // ==================================================
+        // Merchant Revenue
+        // ==================================================
 
         merchantRevenue:
             merchantRevenue.map(
@@ -337,12 +446,12 @@ const getAdminWalletAnalyticsService = async (
 
                     totalRevenue:
                         Number(
-                            row.total_revenue
+                            row.total_revenue || 0
                         ),
 
                     transactionCount:
                         Number(
-                            row.transaction_count
+                            row.transaction_count || 0
                         ),
 
                     lastTransactionAt:
@@ -351,6 +460,10 @@ const getAdminWalletAnalyticsService = async (
                 })
             ),
 
+
+        // ==================================================
+        // Daily Revenue
+        // ==================================================
 
         dailyRevenue:
             dailyRevenue.map(
@@ -361,17 +474,21 @@ const getAdminWalletAnalyticsService = async (
 
                     revenue:
                         Number(
-                            row.revenue
+                            row.revenue || 0
                         ),
 
                     transactionCount:
                         Number(
-                            row.transaction_count
+                            row.transaction_count || 0
                         )
 
                 })
             ),
 
+
+        // ==================================================
+        // Recent Transactions
+        // ==================================================
 
         recentTransactions:
             recentTransactions.map(
@@ -396,22 +513,28 @@ const getAdminWalletAnalyticsService = async (
                         row.source,
 
                     amount:
-                        Number(row.amount),
+                        Number(
+                            row.amount || 0
+                        ),
 
                     feeAmount:
-                        Number(row.fee_amount),
+                        Number(
+                            row.fee_amount || 0
+                        ),
 
                     totalAmount:
-                        Number(row.total_amount),
+                        Number(
+                            row.total_amount || 0
+                        ),
 
                     balanceBefore:
                         Number(
-                            row.balance_before
+                            row.balance_before || 0
                         ),
 
                     balanceAfter:
                         Number(
-                            row.balance_after
+                            row.balance_after || 0
                         ),
 
                     referenceType:
@@ -432,6 +555,10 @@ const getAdminWalletAnalyticsService = async (
                 })
             ),
 
+
+        // ==================================================
+        // Reconciliation
+        // ==================================================
 
         reconciliation: {
 
