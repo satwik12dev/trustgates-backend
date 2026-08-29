@@ -1,30 +1,5 @@
 const redis = require("../../../config/redis");
 
-
-// ==========================================================
-// Global API Rate Limiter
-// ==========================================================
-//
-// Production:
-// 100 requests / minute / IP
-//
-// Load Testing:
-// 500 requests / minute / IP
-//
-// ==========================================================
-
-
-const PRODUCTION_LIMIT = 100;
-
-const LOAD_TEST_LIMIT = 500;
-
-const WINDOW_SECONDS = 60;
-
-
-// ==========================================================
-// Global Rate Limiter
-// ==========================================================
-
 const globalRateLimiter = async (
     req,
     res,
@@ -39,7 +14,6 @@ const globalRateLimiter = async (
 
         const ip =
             req.ip ||
-            req.headers["x-forwarded-for"] ||
             "unknown";
 
 
@@ -58,7 +32,6 @@ const globalRateLimiter = async (
         const isLoadTesting =
             process.env.LOAD_TESTING === "true";
 
-
         const maxRequests =
             isLoadTesting
                 ? LOAD_TEST_LIMIT
@@ -70,14 +43,11 @@ const globalRateLimiter = async (
         // ==================================================
 
         const current =
-            await redis.incr(
-                key
-            );
+            await redis.incr(key);
 
 
         // ==================================================
-        // First Request
-        // Start 60 Second Window
+        // Start Window
         // ==================================================
 
         if (current === 1) {
@@ -94,31 +64,68 @@ const globalRateLimiter = async (
         // Limit Exceeded
         // ==================================================
 
-        if (
-            current > maxRequests
-        ) {
+        if (current > maxRequests) {
 
             const ttl =
-                await redis.ttl(
-                    key
-                );
+                await redis.ttl(key);
+
+            const retryAfter =
+                ttl > 0
+                    ? ttl
+                    : WINDOW_SECONDS;
+
+
+            res.set(
+                "Retry-After",
+                String(retryAfter)
+            );
+
+            res.set(
+                "X-RateLimit-Limit",
+                String(maxRequests)
+            );
+
+            res.set(
+                "X-RateLimit-Remaining",
+                "0"
+            );
 
 
             return res.status(429).json({
 
                 success: false,
 
+                code:
+                    "GLOBAL_RATE_LIMIT_EXCEEDED",
+
                 message:
                     "Too many requests. Please try again later.",
 
-                retryAfter:
-                    ttl > 0
-                        ? ttl
-                        : WINDOW_SECONDS
+                retryAfter
 
             });
 
         }
+
+
+        // ==================================================
+        // Rate Limit Headers
+        // ==================================================
+
+        res.set(
+            "X-RateLimit-Limit",
+            String(maxRequests)
+        );
+
+        res.set(
+            "X-RateLimit-Remaining",
+            String(
+                Math.max(
+                    0,
+                    maxRequests - current
+                )
+            )
+        );
 
 
         // ==================================================
@@ -132,12 +139,20 @@ const globalRateLimiter = async (
 
         console.error(
             "Global Rate Limiter Error:",
-            error
+            error.message
         );
 
 
         // ==================================================
         // Fail Open
+        // ==================================================
+        //
+        // Redis failure should not make the entire API
+        // unavailable.
+        //
+        // Route-specific security middleware can still
+        // protect sensitive endpoints.
+        //
         // ==================================================
 
         return next();
@@ -148,7 +163,5 @@ const globalRateLimiter = async (
 
 
 module.exports = {
-
     globalRateLimiter
-
 };
