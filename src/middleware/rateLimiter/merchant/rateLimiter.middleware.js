@@ -1,6 +1,6 @@
 const redis = require("../../../config/redis");
 
-const PRODUCTION_LIMIT = 500;
+const PRODUCTION_LIMIT = 100;
 const LOAD_TEST_LIMIT = 500;
 
 const WINDOW_SECONDS = 60;
@@ -39,7 +39,7 @@ const globalRateLimiter = async (
         // ==================================================
 
         const isLoadTesting =
-            process.env.LOAD_TESTING === "true";
+            process.env.LOAD_TESTING;
 
 
         const maxRequests =

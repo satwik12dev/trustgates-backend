@@ -8,8 +8,6 @@ const helmet = require("helmet");
 
 const auditContext = require("./middleware/auditContext.middleware");
 const requestIdMiddleware = require("./middleware/requestId.middleware");
-const webhookRoutes = require("./routes/webhook/webhook.routes");
-
 
 route.set("trust proxy", 1);
 route.use(helmet({
@@ -27,12 +25,11 @@ route.use(helmet({
     })
 );
 
- const allowedOrigins = [
-     "http://localhost:5173",
-     "https://trustgates.co.in",
-     "https://www.trustgates.co.in"
- ];
- 
+const allowedOrigins = [
+    "http://localhost:5173",
+    "https://trustgates.co.in"
+];
+
 route.use(cors({
     origin: (origin, callback) => {
 
@@ -81,7 +78,7 @@ route.use(requestIdMiddleware);
 
 const { globalRateLimiter }= require("./middleware/rateLimiter/merchant/rateLimiter.middleware")
 
-const { ipCheckMiddleware } = require("./middleware/rateLimiter");
+const { ipCheckMiddleware, apiRateLimiter } = require("./middleware/rateLimiter");
 const notFoundMiddleware = require("./middleware/notFound.middleware")
 const errorHandler = require("./middleware/error.middleware")
 
@@ -92,12 +89,19 @@ const errorHandler = require("./middleware/error.middleware")
 // 1. Rejects blocked IPs before processing any route
 route.use(ipCheckMiddleware);
 route.use(globalRateLimiter)
+// 2. Applies Universal Rate Limiter to EVERY API request & blocks IP if breached
+// route.use(apiRateLimiter);
 
 
-route.use("/api/webhooks",webhookRoutes);
+route.use(
+    express.json({
+        limit: "1mb",
 
-route.use(express.json({limit: "1mb"}));
-
+        verify: (req, res, buf) => {
+            req.rawBody = Buffer.from(buf);
+        }
+    })
+);
 route.use(express.urlencoded({extended: false,limit: "1mb"}));
 
 const adminDashboardRoutes = require("./routes/admin/dashboard.routes");
@@ -106,6 +110,7 @@ const adminReport = require('./routes/admin/report.routes')
 const adminAPI = require('./routes/admin/api.routes')
 const adminviewKyc = require("./routes/admin/kycDocument.routes")
 const adminWallet = require("./routes/wallet/adminWallet.routes")
+const adminMerchantFee = require("./routes/admin/adminMerchantFee.routes")
 
 const merchantDashboardRoutes = require("./routes/merchant/dashboard.routes")
 const merchantapiWhitelist = require("./routes/merchant/apiWhitelist.routes")
@@ -124,7 +129,7 @@ const paymentStatusRoutes = require("./routes/merchant/payment.routes")
 
 const merchantWalletRoutes = require("./routes/wallet/merchantWallet.routes");
 const walletLedgerRoutes = require("./routes/wallet/walletLedger.routes");
-
+const webhook = require("./routes/webhook/transactionWebhook.routes")
 
 // Admin Dashboard APIs
 route.use("/admin", adminDashboardRoutes);
@@ -134,6 +139,7 @@ route.use("/admin/api", adminAPI)
 route.use("/admin/api-whitelist", merchantapiWhitelist)
 route.use("/admin/view-kyc", adminviewKyc)
 route.use("/admin/wallet", adminWallet);
+route.use("/admin/fee-management", adminMerchantFee)
 
 
 //Merchant Dashbiard APIs
@@ -152,6 +158,7 @@ route.use("/merchant/payout/analytics", merchantPayoutAnalytics)
 
 route.use("/wallet",merchantWalletRoutes);
 route.use("/wallet/ledger",walletLedgerRoutes);
+route.use("/webhook", webhook)
 
 
 // Centralized Error Handling Middleware

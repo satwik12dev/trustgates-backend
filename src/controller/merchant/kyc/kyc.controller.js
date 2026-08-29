@@ -61,6 +61,9 @@ const uploadKyc = async (req, res, next) => {
 
 };
 
+module.exports = {
+    uploadKyc
+};
 
 module.exports = {
     uploadKyc
