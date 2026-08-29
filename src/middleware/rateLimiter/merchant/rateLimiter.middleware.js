@@ -1,6 +1,6 @@
 const redis = require("../../../config/redis");
 
-const PRODUCTION_LIMIT = 100;
+const PRODUCTION_LIMIT = 500;
 const LOAD_TEST_LIMIT = 500;
 
 const WINDOW_SECONDS = 60;
