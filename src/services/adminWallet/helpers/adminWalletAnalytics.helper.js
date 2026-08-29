@@ -184,6 +184,8 @@ const getDailyRevenue = async (
 
 const getRecentTransactions = async (
     connection,
+    dateFrom,
+    dateTo,
     limit = 20
 ) => {
 
@@ -196,10 +198,13 @@ const getRecentTransactions = async (
             100
         );
 
+
     const [rows] =
         await connection.query(
             QUERIES.RECENT_TRANSACTIONS,
             [
+                dateFrom,
+                dateTo,
                 safeLimit
             ]
         );
@@ -213,17 +218,20 @@ const getRecentTransactions = async (
 // ==========================================================
 
 const getReconciliation = async (
-    connection
+    connection,
+    adminWalletId
 ) => {
 
     const [rows] =
         await connection.query(
-            QUERIES.RECONCILIATION
+            QUERIES.RECONCILIATION,
+            [
+                adminWalletId
+            ]
         );
 
     return rows[0] || {
-        total_credits: 0,
-        total_debits: 0
+        calculated_balance: 0
     };
 };
 
@@ -235,13 +243,21 @@ const getReconciliation = async (
 module.exports = {
 
     getAdminWallet,
+
     getAdminWalletSummary,
+
     getFeeRevenue,
+
     getSourceRevenue,
+
     getMerchantRevenue,
+
     getRefundFeeAnalytics,
+
     getDailyRevenue,
+
     getRecentTransactions,
+
     getReconciliation
 
 };
