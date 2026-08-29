@@ -1,5 +1,15 @@
 const redis = require("../../../config/redis");
 
+const PRODUCTION_LIMIT = 100;
+const LOAD_TEST_LIMIT = 500;
+
+const WINDOW_SECONDS = 60;
+
+
+// ==========================================================
+// Global Rate Limiter
+// ==========================================================
+
 const globalRateLimiter = async (
     req,
     res,
@@ -13,8 +23,7 @@ const globalRateLimiter = async (
         // ==================================================
 
         const ip =
-            req.ip ||
-            "unknown";
+            req.ip || "unknown";
 
 
         // ==================================================
@@ -26,11 +35,12 @@ const globalRateLimiter = async (
 
 
         // ==================================================
-        // Select Limit
+        // Determine Current Limit
         // ==================================================
 
         const isLoadTesting =
             process.env.LOAD_TESTING === "true";
+
 
         const maxRequests =
             isLoadTesting
@@ -39,7 +49,7 @@ const globalRateLimiter = async (
 
 
         // ==================================================
-        // Increment Counter
+        // Increment Redis Counter
         // ==================================================
 
         const current =
@@ -47,7 +57,7 @@ const globalRateLimiter = async (
 
 
         // ==================================================
-        // Start Window
+        // Start New 60 Second Window
         // ==================================================
 
         if (current === 1) {
@@ -61,13 +71,16 @@ const globalRateLimiter = async (
 
 
         // ==================================================
-        // Limit Exceeded
+        // Rate Limit Exceeded
         // ==================================================
 
-        if (current > maxRequests) {
+        if (
+            current > maxRequests
+        ) {
 
             const ttl =
                 await redis.ttl(key);
+
 
             const retryAfter =
                 ttl > 0
@@ -75,21 +88,26 @@ const globalRateLimiter = async (
                     : WINDOW_SECONDS;
 
 
+            // ----------------------------------------------
+            // Response Headers
+            // ----------------------------------------------
+
             res.set(
                 "Retry-After",
                 String(retryAfter)
             );
+
 
             res.set(
                 "X-RateLimit-Limit",
                 String(maxRequests)
             );
 
+
             res.set(
                 "X-RateLimit-Remaining",
                 "0"
             );
-
 
             return res.status(429).json({
 
@@ -107,33 +125,24 @@ const globalRateLimiter = async (
 
         }
 
+        const remaining =
+            Math.max(
+                0,
+                maxRequests - current
+            );
 
-        // ==================================================
-        // Rate Limit Headers
-        // ==================================================
 
         res.set(
             "X-RateLimit-Limit",
             String(maxRequests)
         );
 
+
         res.set(
             "X-RateLimit-Remaining",
-            String(
-                Math.max(
-                    0,
-                    maxRequests - current
-                )
-            )
+            String(remaining)
         );
-
-
-        // ==================================================
-        // Continue
-        // ==================================================
-
         return next();
-
 
     } catch (error) {
 
@@ -141,19 +150,6 @@ const globalRateLimiter = async (
             "Global Rate Limiter Error:",
             error.message
         );
-
-
-        // ==================================================
-        // Fail Open
-        // ==================================================
-        //
-        // Redis failure should not make the entire API
-        // unavailable.
-        //
-        // Route-specific security middleware can still
-        // protect sensitive endpoints.
-        //
-        // ==================================================
 
         return next();
 
