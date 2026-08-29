@@ -1,7 +1,29 @@
-const redisClient = require("../../../config/redis");
+const redisClient =
+    require("../../../config/redis");
+
+
+// ==========================================================
+// Admin Read Rate Limiter
+// ==========================================================
+//
+// 100 requests / minute
+// Per Admin + IP
+//
+// IMPORTANT:
+// - Does NOT block IP
+// - Only returns 429 when limit is exceeded
+// - v2 key namespace prevents old counters from affecting
+//   the new deployment
+//
+// ==========================================================
 
 const WINDOW_SECONDS = 60;
-const MAX_REQUESTS = 100;
+const MAX_REQUESTS = 500;
+
+
+// ==========================================================
+// Admin Read Rate Limiter
+// ==========================================================
 
 const adminReadRateLimiter = async (
     req,
@@ -11,8 +33,13 @@ const adminReadRateLimiter = async (
 
     try {
 
+        // ==================================================
+        // Admin Authentication
+        // ==================================================
+
         const adminId =
             req.admin?.admin_id;
+
 
         if (!adminId) {
 
@@ -30,24 +57,62 @@ const adminReadRateLimiter = async (
 
         }
 
+
+        // ==================================================
+        // Client IP
+        // ==================================================
+
         const ip =
-            (
-                req.ip ||
-                req.socket?.remoteAddress ||
-                "unknown"
-            )
+            req.ip ||
+            req.socket?.remoteAddress ||
+            "unknown";
+
+
+        const normalizedIp =
+            String(ip)
                 .replace(
                     /:/g,
                     "_"
                 );
 
+
+        // ==================================================
+        // Redis Key
+        // ==================================================
+        //
+        // v2 creates a fresh rate-limit namespace.
+        //
+        // Old:
+        // rate_limit:admin:read:...
+        //
+        // New:
+        // rate_limit:v2:admin:read:...
+        //
+        // Old Redis counters remain untouched.
+        //
+        // ==================================================
+
         const key =
-            `rate_limit:admin:read:${adminId}:${ip}`;
+            `rate_limit:v2:admin:read:${adminId}:${normalizedIp}`;
+
+
+        // ==================================================
+        // Increment Counter
+        // ==================================================
 
         const count =
-            await redisClient.incr(key);
+            await redisClient.incr(
+                key
+            );
 
-        if (count === 1) {
+
+        // ==================================================
+        // Start 60 Second Window
+        // ==================================================
+
+        if (
+            count === 1
+        ) {
 
             await redisClient.expire(
                 key,
@@ -56,53 +121,124 @@ const adminReadRateLimiter = async (
 
         }
 
+
+        // ==================================================
+        // Limit Exceeded
+        // ==================================================
+
         if (
             count > MAX_REQUESTS
         ) {
 
             const ttl =
-                await redisClient.ttl(key);
+                await redisClient.ttl(
+                    key
+                );
+
+
+            const retryAfter =
+                ttl > 0
+                    ? ttl
+                    : WINDOW_SECONDS;
+
+
+            // ----------------------------------------------
+            // Headers
+            // ----------------------------------------------
 
             res.set(
                 "Retry-After",
-                String(
-                    ttl > 0
-                        ? ttl
-                        : WINDOW_SECONDS
-                )
+                String(retryAfter)
             );
+
+            res.set(
+                "X-RateLimit-Limit",
+                String(MAX_REQUESTS)
+            );
+
+            res.set(
+                "X-RateLimit-Remaining",
+                "0"
+            );
+
+
+            // ----------------------------------------------
+            // Response
+            // ----------------------------------------------
 
             return res.status(429).json({
 
                 success: false,
 
                 code:
-                    "RATE_LIMIT_EXCEEDED",
+                    "ADMIN_READ_RATE_LIMIT_EXCEEDED",
 
                 message:
-                    "Too many read requests. Please try again later."
+                    "Too many read requests. Please try again later.",
+
+                retryAfter
 
             });
 
         }
 
-        next();
+
+        // ==================================================
+        // Rate Limit Headers
+        // ==================================================
+
+        const remaining =
+            Math.max(
+                0,
+                MAX_REQUESTS - count
+            );
+
+
+        res.set(
+            "X-RateLimit-Limit",
+            String(MAX_REQUESTS)
+        );
+
+        res.set(
+            "X-RateLimit-Remaining",
+            String(remaining)
+        );
+
+
+        // ==================================================
+        // Continue
+        // ==================================================
+
+        return next();
+
 
     } catch (error) {
 
         console.error(
             "Admin Read Rate Limiter Error:",
-            error
+            error.message
         );
 
-        // Temporary production-safe behaviour:
-        // Redis failure should not break CMS reads.
 
-        next();
+        // ==================================================
+        // Fail Open
+        // ==================================================
+        //
+        // Redis failure should not make dashboard reads
+        // unavailable.
+        //
+        // ==================================================
+
+        return next();
 
     }
 
 };
+
+
+// ==========================================================
+// Export
+// ==========================================================
 
 module.exports =
     adminReadRateLimiter;
