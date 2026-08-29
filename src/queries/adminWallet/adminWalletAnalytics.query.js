@@ -77,8 +77,8 @@ const ADMIN_WALLET_ANALYTICS_QUERIES = {
 
         FROM admin_wallet_transactions
 
-        WHERE DATE(created_at)
-              BETWEEN ? AND ?
+        WHERE created_at >= ?
+          AND created_at < DATE_ADD(?, INTERVAL 1 DAY)
     `,
 
 
@@ -106,8 +106,8 @@ const ADMIN_WALLET_ANALYTICS_QUERIES = {
         WHERE transaction_type = 'CREDIT'
           AND source = 'FEE'
           AND status = 'COMPLETED'
-          AND DATE(created_at)
-              BETWEEN ? AND ?
+          AND created_at >= ?
+          AND created_at < DATE_ADD(?, INTERVAL 1 DAY)
     `,
 
 
@@ -132,12 +132,13 @@ const ADMIN_WALLET_ANALYTICS_QUERIES = {
         WHERE transaction_type = 'CREDIT'
           AND source = 'FEE'
           AND status = 'COMPLETED'
-          AND DATE(created_at)
-              BETWEEN ? AND ?
+          AND created_at >= ?
+          AND created_at < DATE_ADD(?, INTERVAL 1 DAY)
 
         GROUP BY source
 
-        ORDER BY revenue DESC
+        ORDER BY
+            revenue DESC
     `,
 
 
@@ -164,13 +165,14 @@ const ADMIN_WALLET_ANALYTICS_QUERIES = {
         WHERE transaction_type = 'CREDIT'
           AND source = 'FEE'
           AND status = 'COMPLETED'
-          AND DATE(created_at)
-              BETWEEN ? AND ?
+          AND created_at >= ?
+          AND created_at < DATE_ADD(?, INTERVAL 1 DAY)
 
         GROUP BY merchant_id
 
-        ORDER BY total_revenue DESC,
-                 merchant_id ASC
+        ORDER BY
+            total_revenue DESC,
+            merchant_id ASC
     `,
 
 
@@ -199,8 +201,8 @@ const ADMIN_WALLET_ANALYTICS_QUERIES = {
           AND source = 'FEE'
           AND reference_type = 'REFUND'
           AND status = 'COMPLETED'
-          AND DATE(created_at)
-              BETWEEN ? AND ?
+          AND created_at >= ?
+          AND created_at < DATE_ADD(?, INTERVAL 1 DAY)
     `,
 
 
@@ -209,38 +211,37 @@ const ADMIN_WALLET_ANALYTICS_QUERIES = {
     // ======================================================
 
     DAILY_REVENUE: `
-    SELECT
+        SELECT
 
-        DATE_FORMAT(
-            created_at,
-            '%Y-%m-%d'
-        ) AS date,
+            DATE_FORMAT(
+                created_at,
+                '%Y-%m-%d'
+            ) AS date,
 
-        COALESCE(
-            SUM(total_amount),
-            0
-        ) AS revenue,
+            COALESCE(
+                SUM(total_amount),
+                0
+            ) AS revenue,
 
-        COUNT(*) AS transaction_count
+            COUNT(*) AS transaction_count
 
-    FROM admin_wallet_transactions
+        FROM admin_wallet_transactions
 
-    WHERE transaction_type = 'CREDIT'
-      AND source = 'FEE'
-      AND status = 'COMPLETED'
-      AND DATE(created_at)
-          BETWEEN ? AND ?
+        WHERE transaction_type = 'CREDIT'
+          AND source = 'FEE'
+          AND status = 'COMPLETED'
+          AND created_at >= ?
+          AND created_at < DATE_ADD(?, INTERVAL 1 DAY)
 
-    GROUP BY DATE_FORMAT(
-        created_at,
-        '%Y-%m-%d'
-    )
+        GROUP BY
+            DATE_FORMAT(
+                created_at,
+                '%Y-%m-%d'
+            )
 
-    ORDER BY DATE_FORMAT(
-        created_at,
-        '%Y-%m-%d'
-    ) ASC
-`,
+        ORDER BY
+            date ASC
+    `,
 
 
     // ======================================================
@@ -269,6 +270,9 @@ const ADMIN_WALLET_ANALYTICS_QUERIES = {
 
         FROM admin_wallet_transactions
 
+        WHERE created_at >= ?
+          AND created_at < DATE_ADD(?, INTERVAL 1 DAY)
+
         ORDER BY
             created_at DESC,
             admin_wallet_transaction_id DESC
@@ -285,30 +289,22 @@ const ADMIN_WALLET_ANALYTICS_QUERIES = {
         SELECT
 
             COALESCE(
-                SUM(
-                    CASE
-                        WHEN transaction_type = 'CREDIT'
-                        AND status = 'COMPLETED'
-                        THEN total_amount
-                        ELSE 0
-                    END
+                (
+                    SELECT balance_after
+
+                    FROM admin_wallet_transactions
+
+                    WHERE admin_wallet_id = ?
+
+                    ORDER BY
+                        created_at DESC,
+                        admin_wallet_transaction_id DESC
+
+                    LIMIT 1
                 ),
                 0
-            ) AS total_credits,
+            ) AS calculated_balance
 
-            COALESCE(
-                SUM(
-                    CASE
-                        WHEN transaction_type = 'DEBIT'
-                        AND status = 'COMPLETED'
-                        THEN total_amount
-                        ELSE 0
-                    END
-                ),
-                0
-            ) AS total_debits
-
-        FROM admin_wallet_transactions
     `
 
 };
