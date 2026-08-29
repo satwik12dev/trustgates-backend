@@ -81,7 +81,7 @@ route.use(requestIdMiddleware);
 
 const { globalRateLimiter }= require("./middleware/rateLimiter/merchant/rateLimiter.middleware")
 
-const { ipCheckMiddleware, apiRateLimiter } = require("./middleware/rateLimiter");
+const { ipCheckMiddleware } = require("./middleware/rateLimiter");
 const notFoundMiddleware = require("./middleware/notFound.middleware")
 const errorHandler = require("./middleware/error.middleware")
 
