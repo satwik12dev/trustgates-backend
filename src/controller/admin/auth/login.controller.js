@@ -9,6 +9,10 @@ const {
     "../../../services/admin/login.service"
 );
 
+const sendNewLoginAlertEmail = require(
+    "../../../services/email/sendNewLoginAlertEmail"
+);
+
 
 const adminlogin = async (
     req,
@@ -77,6 +81,25 @@ const adminlogin = async (
                         req.audit?.requestId
                 }
             );
+
+
+        // ==================================================
+        // Send Login Alert Email
+        // ==================================================
+
+        if (result.admin && result.admin.email) {
+            sendNewLoginAlertEmail(
+                result.admin.full_name || "Admin",
+                result.admin.email,
+                {
+                    ip: req.audit?.ipAddress || req.ip || req.headers["x-forwarded-for"] || "N/A",
+                    userAgent: req.audit?.userAgent || req.headers["user-agent"] || "Unknown Device",
+                    time: new Date().toUTCString()
+                }
+            ).catch((err) => {
+                console.error("Failed to send admin login alert email:", err.message);
+            });
+        }
 
 
         // ==================================================

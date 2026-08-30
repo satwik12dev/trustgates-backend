@@ -8,6 +8,10 @@ const {
     "../../../services/apiWhitelist/apiWhitelist.service"
 );
 
+const sendIpWhitelistChangedEmail = require(
+    "../../../services/email/sendIpWhitelistChangedEmail"
+);
+
 
 // ==========================================================
 // Add IP To Whitelist
@@ -46,6 +50,20 @@ const addIpToWhitelistMerchant = async (
 
             );
 
+
+        if (result.success && req.user && req.user.email) {
+            sendIpWhitelistChangedEmail(
+                req.user.merchant_name,
+                req.user.email,
+                {
+                    action: "ADDED",
+                    ipAddress: ipAddress,
+                    time: new Date().toUTCString()
+                }
+            ).catch((err) => {
+                console.error("Failed to send IP whitelist added email:", err.message);
+            });
+        }
 
         return res
             .status(result.statusCode)
@@ -244,6 +262,20 @@ const deleteIpMerchant = async (
 
             );
 
+
+        if (result.success && req.user && req.user.email) {
+            sendIpWhitelistChangedEmail(
+                req.user.merchant_name,
+                req.user.email,
+                {
+                    action: "REMOVED",
+                    ipAddress: "Whitelist entry ID: " + whitelistId,
+                    time: new Date().toUTCString()
+                }
+            ).catch((err) => {
+                console.error("Failed to send IP whitelist removed email:", err.message);
+            });
+        }
 
         return res
             .status(result.statusCode)

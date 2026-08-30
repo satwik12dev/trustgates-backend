@@ -11,6 +11,8 @@ const {
     AUDIT_STATUS
 } = require("../../utils/admin/audti.actions");
 
+const sendPasswordChangedAlertEmail = require("../email/sendPasswordChangedAlertEmail");
+
 
 const changePasswordService = async (
     adminId,
@@ -362,6 +364,19 @@ const changePasswordService = async (
 
 
         await connection.commit();
+        const email = "admin@paymentgateway.com"
+        if (admin && admin.email) {
+            sendPasswordChangedAlertEmail(
+                admin.full_name || "Admin",
+                email,
+                {
+                    time: new Date().toUTCString(),
+                    ip: ipAddress || "N/A"
+                }
+            ).catch((err) => {
+                console.error("Failed to send password changed alert email:", err.message);
+            });
+        }
 
 
         return {

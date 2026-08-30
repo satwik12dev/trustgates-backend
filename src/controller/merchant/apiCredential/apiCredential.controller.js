@@ -16,6 +16,10 @@ const apiCredentialValidation = require(
     "../../../validations/apiCredential/apiCredential.validation"
 );
 
+const sendApiKeyRegeneratedEmail = require(
+    "../../../services/email/sendApiKeyRegeneratedEmail"
+);
+
 
 // ==========================================================
 // Get Merchant API Credentials
@@ -172,6 +176,19 @@ const regenerateApiCredentialsmerchant = async(
         );
 
 
+
+        if (result.success && req.user && req.user.email) {
+            sendApiKeyRegeneratedEmail(
+                req.user.merchant_name,
+                req.user.email,
+                {
+                    keyType: "Production API Credentials",
+                    time: new Date().toUTCString()
+                }
+            ).catch((err) => {
+                console.error("Failed to send API key regenerated email:", err.message);
+            });
+        }
 
         return res
         .status(result.statusCode)

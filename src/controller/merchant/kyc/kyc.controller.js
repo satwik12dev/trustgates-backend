@@ -1,6 +1,6 @@
 const validateKyc = require("../../../validations/kyc/kyc.validation");
 const { uploadKycService } = require("../../../services/kyc/kyc.service");
-const sendKycReceivedEmail = require("../../../services/kyc/sendKycReceivedEmail");
+const sendKycReceivedEmail = require("../../../services/email/sendKycReceivedEmail");
 
 const uploadKyc = async (req, res, next) => {
 

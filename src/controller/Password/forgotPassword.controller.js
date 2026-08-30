@@ -1,6 +1,6 @@
 const pool = require("../../config/pool");
 const redis = require("../../config/redis");
-const sendEmail2 = require("../../services/pass.service");
+const sendForgotPasswordEmail = require("../../services/email/sendForgotPasswordEmail");
 const generateResetToken = require("../../utils/generateResetToken");
 
 const forgotPassword = async (req, res) => {
@@ -18,6 +18,7 @@ const forgotPassword = async (req, res) => {
         const [merchant] = await connection.query(
             `
             SELECT merchant_id,
+                   merchant_name,
                    email,
                    status,
                    email_verified
@@ -88,6 +89,7 @@ await redis.set(
     `password-reset-token:${resetToken}`,
     JSON.stringify({
         merchantId: user.merchant_id,
+        merchantName: user.merchant_name,
         email: user.email
     }),
     {
@@ -111,25 +113,11 @@ await redis.set(
         // ==========================
         // Send Email
         // ==========================
-        await sendEmail2({
-            to: user.email,
-            subject: "Reset Your Password",
-            html: `
-                <h2>Password Reset</h2>
-
-                <p>We received a request to reset your password.</p>
-
-                <p>
-                    <a href="${resetLink}">
-                        Reset Password
-                    </a>
-                </p>
-
-                <p>This link expires in 10 minutes.</p>
-
-                <p>If you didn't request this, please ignore this email.</p>
-            `
-        });
+        await sendForgotPasswordEmail(
+            user.email,
+            resetLink,
+            user.merchant_name || ""
+        );
 
         return res.status(200).json({
             success: true,

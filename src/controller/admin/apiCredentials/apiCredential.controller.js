@@ -117,16 +117,18 @@ const createApiCredentials = async (
             error,
             value
         } =
-            apiCredentialValidation.validate(
+            apiCredentialValidation
+                .generateApiCredentialValidation
+                .validate(
 
-                req.body,
+                    req.body,
 
-                {
-                    abortEarly: true,
-                    stripUnknown: true
-                }
+                    {
+                        abortEarly: true,
+                        stripUnknown: true
+                    }
 
-            );
+                );
 
 
         if (error) {
@@ -323,7 +325,7 @@ const updateApiCredentialStatus =
                 value
             } =
                 apiCredentialValidation
-                    .statusValidation
+                    .updateApiStatusValidation
                     .validate(
 
                         req.body,
@@ -364,9 +366,7 @@ const updateApiCredentialStatus =
 
 
             if (
-                !Number.isInteger(
-                    credentialId
-                ) ||
+                !Number.isInteger(credentialId) ||
                 credentialId <= 0
             ) {
 
@@ -450,9 +450,7 @@ const regenerateApiCredentialsController =
 
 
             if (
-                !Number.isInteger(
-                    credentialId
-                ) ||
+                !Number.isInteger(credentialId) ||
                 credentialId <= 0
             ) {
 
@@ -534,9 +532,7 @@ const revokeApiCredentialController =
 
 
             if (
-                !Number.isInteger(
-                    credentialId
-                ) ||
+                !Number.isInteger(credentialId) ||
                 credentialId <= 0
             ) {
 
@@ -724,7 +720,7 @@ const handleApiCredentialError = (
 
     // ==================================================
     // Merchant Not Found
-    // ==================================================
+    // ==========================================================
 
     if (
         error.message ===
@@ -976,7 +972,7 @@ const handleApiCredentialError = (
 
     // ==================================================
     // Unknown Error
-    // ==================================================
+    // ==========================================================
 
     next(error);
 

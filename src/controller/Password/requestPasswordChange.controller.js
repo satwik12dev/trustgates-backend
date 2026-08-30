@@ -2,7 +2,7 @@ const bcrypt = require("bcrypt");
 const crypto = require("crypto");
 
 const redis = require("../../config/redis");
-const sendEmail2 = require("../../services/pass.service");
+const sendPasswordResetOtpEmail = require("../../services/email/sendPasswordResetOtpEmail");
 
 const requestPasswordChange = async (req, res) => {
     try {
@@ -114,21 +114,11 @@ if (!merchantId || !email) {
         // ==========================
         // Send OTP Email
         // ==========================
-        await sendEmail2({
-            to: email,
-            subject: "Password Reset Verification OTP",
-            html: `
-                <h2>Password Reset Verification</h2>
-
-                <p>Your OTP is:</p>
-
-                <h1>${otp}</h1>
-
-                <p>This OTP expires in 10 minutes.</p>
-
-                <p>If you didn't request this, ignore this email.</p>
-            `
-        });
+        await sendPasswordResetOtpEmail(
+            email,
+            otp,
+            sessionData.merchantName || sessionData.merchant_name || ""
+        );
 
         return res.status(200).json({
             success: true,

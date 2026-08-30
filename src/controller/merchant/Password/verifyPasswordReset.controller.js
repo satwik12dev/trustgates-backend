@@ -15,6 +15,9 @@ const {
 } =
     require("../../../services/security/securityLock.service");
 
+const sendPasswordResetSuccessEmail =
+    require("../../../services/email/sendPasswordResetSuccessEmail");
+
 
 const verifyPasswordReset = async (
     req,
@@ -519,14 +522,27 @@ const verifyPasswordReset = async (
         // ==================================================
 
         await redis.del(
-
             sessionKey,
-
             `password-reset:otp:${tokenHash}`,
-
             attemptsKey
-
         );
+
+
+        // ==================================================
+        // Send Confirmation Email
+        // ==================================================
+
+        if (sessionData.email) {
+            sendPasswordResetSuccessEmail(
+                sessionData.email,
+                sessionData.merchantName || sessionData.merchant_name || ""
+            ).catch((emailError) => {
+                console.error(
+                    "Failed to send password reset success email:",
+                    emailError.message
+                );
+            });
+        }
 
 
         return res.status(200).json({

@@ -1,6 +1,7 @@
 const crypto = require("crypto");
 const pool = require("../../config/pool");
 const redis = require("../../config/redis");
+const sendPasswordResetSuccessEmail = require("../../services/email/sendPasswordResetSuccessEmail");
 
 const verifyPasswordReset = async (req, res) => {
 
@@ -141,15 +142,24 @@ if (!merchantId || !email) {
 
         await connection.commit();
 
-        // ==========================
-        // Cleanup Redis
-        // ==========================
         await redis.del(
             `password-reset-token:${token}`,
             `password-reset-password:${token}`,
             `password-reset-otp:${token}`,
             `password-reset-attempts:${token}`
         );
+
+        // ==========================
+        // Send Confirmation Email
+        // ==========================
+        if (email) {
+            sendPasswordResetSuccessEmail(
+                email,
+                sessionData.merchantName || sessionData.merchant_name || ""
+            ).catch((err) => {
+                console.error("Failed to send password reset success email:", err);
+            });
+        }
 
         return res.status(200).json({
             success: true,

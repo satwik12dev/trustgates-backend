@@ -37,7 +37,7 @@ const {
 
 const sendKycReceivedEmail =
     require(
-        "../../../services/kyc/sendKycReceivedEmail"
+        "../../../services/email/sendKycReceivedEmail"
     );
 
 const sendApiCredentialsEmail =

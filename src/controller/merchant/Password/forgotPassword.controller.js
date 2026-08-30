@@ -6,8 +6,8 @@ const pool =
 const redis =
     require("../../../config/redis");
 
-const sendEmail2 =
-    require("../../../services/pass.service");
+const sendForgotPasswordEmail =
+    require("../../../services/email/sendForgotPasswordEmail");
 
 const {
     getMerchantSecurityLock
@@ -67,6 +67,7 @@ const forgotPassword = async (
                 SELECT
 
                     merchant_id,
+                    merchant_name,
                     email,
                     account_status,
                     email_verified
@@ -214,6 +215,9 @@ const forgotPassword = async (
 
                 merchantId,
 
+                merchantName:
+                    merchant.merchant_name,
+
                 email:
                     merchant.email
 
@@ -238,40 +242,11 @@ const forgotPassword = async (
         // Send Email
         // ==================================================
 
-        await sendEmail2({
-
-            to:
-                merchant.email,
-
-            subject:
-                "Reset Your Password",
-
-            html: `
-
-                <h2>Password Reset</h2>
-
-                <p>
-                    We received a request to reset your password.
-                </p>
-
-                <p>
-                    <a href="${resetLink}">
-                        Reset Password
-                    </a>
-                </p>
-
-                <p>
-                    This link expires in 10 minutes.
-                </p>
-
-                <p>
-                    If you didn't request this,
-                    please ignore this email.
-                </p>
-
-            `
-
-        });
+        await sendForgotPasswordEmail(
+            merchant.email,
+            resetLink,
+            merchant.merchant_name
+        );
 
 
         return res.status(200).json({

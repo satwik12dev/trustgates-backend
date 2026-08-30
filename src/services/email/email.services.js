@@ -2,7 +2,7 @@ const transporter = require("../../config/brevo");
 
 const sendOTPEmail = async (email, merchantName, otp) => {
     await transporter.sendMail({
-        from: `"XYZ Payments" <${process.env.BREVO_SENDER_EMAIL}>`,
+        from: `"Trust Gates Support" <${process.env.BREVO_SENDER_EMAIL}>`,
         to: email,
         subject: "Verify Your Email Address",
 

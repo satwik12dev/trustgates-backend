@@ -3,8 +3,8 @@ const crypto = require("crypto");
 const redis =
     require("../../../config/redis");
 
-const sendEmail2 =
-    require("../../../services/pass.service");
+const sendPasswordResetOtpEmail =
+    require("../../../services/email/sendPasswordResetOtpEmail");
 
 
 const requestPasswordChange = async (
@@ -181,38 +181,11 @@ const requestPasswordChange = async (
         // Send OTP
         // ==================================================
 
-        await sendEmail2({
-
-            to:
-                email,
-
-            subject:
-                "Password Reset Verification OTP",
-
-            html: `
-
-                <h2>Password Reset Verification</h2>
-
-                <p>
-                    Your password reset OTP is:
-                </p>
-
-                <h1>
-                    ${otp}
-                </h1>
-
-                <p>
-                    This OTP expires in 10 minutes.
-                </p>
-
-                <p>
-                    If you didn't request this,
-                    please ignore this email.
-                </p>
-
-            `
-
-        });
+        await sendPasswordResetOtpEmail(
+            email,
+            otp,
+            sessionData.merchantName || sessionData.merchant_name || ""
+        );
 
 
         return res.status(200).json({

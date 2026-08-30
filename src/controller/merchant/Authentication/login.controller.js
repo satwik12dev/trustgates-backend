@@ -15,6 +15,12 @@ const {
     clearFailedLogin
 } = require("../../../middleware/security/merchant/loginSecurity.middleware");
 
+const sendNewLoginAlertEmail =
+    require("../../../services/email/sendNewLoginAlertEmail");
+
+const sendAccountLockedEmail =
+    require("../../../services/email/sendAccountLockedEmail");
+
 
 // ==========================================================
 // Argon2 Configuration
@@ -244,6 +250,17 @@ const login = async (req, res) => {
                 failedLogin.blocked
             ) {
 
+                sendAccountLockedEmail(
+                    merchant ? merchant.merchant_name : "",
+                    email,
+                    {
+                        lockDuration: "12 hours",
+                        reason: "5 consecutive failed password attempts."
+                    }
+                ).catch((err) => {
+                    console.error("Failed to send account locked email:", err.message);
+                });
+
                 return res.status(423).json({
 
                     success: false,
@@ -406,8 +423,24 @@ const login = async (req, res) => {
 
                 req.headers["user-agent"] || null
             ]
-
         );
+
+
+        // ==================================================
+        // 14.1 Send Login Alert Email
+        // ==================================================
+
+        sendNewLoginAlertEmail(
+            merchant.merchant_name,
+            merchant.email,
+            {
+                ip: req.ip || req.headers["x-forwarded-for"] || "N/A",
+                userAgent: req.headers["user-agent"] || "Unknown Device",
+                time: new Date().toUTCString()
+            }
+        ).catch((err) => {
+            console.error("Failed to send new login alert email:", err.message);
+        });
 
 
         // ==================================================

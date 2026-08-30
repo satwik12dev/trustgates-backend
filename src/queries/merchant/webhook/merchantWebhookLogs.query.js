@@ -219,7 +219,11 @@ const MERCHANT_WEBHOOK_LOGS_QUERIES = {
 
             mw.webhook_url,
 
-            mw.webhook_secret
+            mw.webhook_secret,
+
+            m.email,
+
+            m.merchant_name
 
 
         FROM merchant_webhook_logs mwl
@@ -228,6 +232,11 @@ const MERCHANT_WEBHOOK_LOGS_QUERIES = {
         JOIN merchant_webhooks mw
 
         ON mw.webhook_id = mwl.webhook_id
+
+
+        LEFT JOIN merchants m
+
+        ON mwl.merchant_id = m.merchant_id
 
 
         WHERE mwl.log_id = ?
