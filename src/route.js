@@ -27,7 +27,8 @@ route.use(helmet({
 
 const allowedOrigins = [
     "http://localhost:5173",
-    "https://trustgates.co.in"
+    "https://trustgates.co.in",
+        "https://www.trustgates.co.in"
 ];
 
 route.use(cors({
