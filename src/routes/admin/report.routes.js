@@ -1,4 +1,6 @@
 const express = require("express");
+const path = require("path");
+const fs = require("fs");
 
 const router = express.Router();
 
@@ -64,6 +66,56 @@ const {
 
 router.use(authenticateAdmin);
 router.use(authorizeAdmin("ADMIN"));
+
+// ======================================================
+// Direct Report Download Route
+// ======================================================
+
+const cleanOldReports = () => {
+    try {
+        const dir = path.join(process.cwd(), "uploads", "reports", "admin");
+        if (!fs.existsSync(dir)) return;
+        const now = Date.now();
+        const maxAge = 15 * 60 * 1000; // 15 minutes
+        fs.readdirSync(dir).forEach((file) => {
+            const fileFullPath = path.join(dir, file);
+            try {
+                const stats = fs.statSync(fileFullPath);
+                if (now - stats.mtimeMs > maxAge) {
+                    fs.unlinkSync(fileFullPath);
+                }
+            } catch {}
+        });
+    } catch {}
+};
+
+router.get(
+    "/download/:fileName",
+    (req, res) => {
+        try {
+            const fileName = path.basename(req.params.fileName);
+            const filePath = path.join(process.cwd(), "uploads", "reports", "admin", fileName);
+            if (!fs.existsSync(filePath)) {
+                return res.status(404).json({ success: false, message: "Report file not found or already downloaded." });
+            }
+            return res.download(filePath, fileName, (downloadErr) => {
+                if (downloadErr) {
+                    console.error("Report download stream error:", downloadErr);
+                }
+                // Automatically delete file immediately after client completes download
+                fs.unlink(filePath, (unlinkErr) => {
+                    if (unlinkErr && unlinkErr.code !== "ENOENT") {
+                        console.error("Failed to delete report file after download:", unlinkErr);
+                    }
+                });
+                // Also clean up any lingering stale reports
+                cleanOldReports();
+            });
+        } catch (err) {
+            return res.status(500).json({ success: false, message: err.message });
+        }
+    }
+);
 
 // ======================================================
 // Daily Reports

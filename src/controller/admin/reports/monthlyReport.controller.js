@@ -288,7 +288,11 @@ const exportMonthlyReport = async (req, res) => {
 
             message: "Monthly report exported successfully.",
 
-            data: result
+            data: {
+                ...result,
+                downloadUrl: `/admin/report/download/${result.fileName}`,
+                downloadPath: result.downloadPath || `/uploads/reports/admin/${result.fileName}`
+            }
 
         });
 

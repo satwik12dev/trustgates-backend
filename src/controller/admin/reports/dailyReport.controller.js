@@ -478,9 +478,11 @@ const exportDailyReport = async (
             message:
                 "Daily report exported successfully.",
 
-            data:
-                result
-
+            data: {
+                ...result,
+                downloadUrl: `/admin/report/download/${result.fileName}`,
+                downloadPath: result.downloadPath || `/uploads/reports/admin/${result.fileName}`
+            }
         });
 
     } catch (error) {
