@@ -3776,6 +3776,65 @@ const exportPDF = async ({
                     stream
                 );
 
+                stream.on(
+    "finish",
+    () => {
+
+        let size = 0;
+
+        try {
+
+            size =
+                fs.statSync(
+                    filePath
+                ).size;
+
+        } catch {
+
+            size = 0;
+
+        }
+
+        resolve({
+
+            success:
+                true,
+
+            fileName:
+                generatedFileName,
+
+            filePath,
+
+            downloadPath:
+                `/uploads/reports/admin/${generatedFileName}`,
+
+            downloadUrl:
+                `/uploads/reports/admin/${generatedFileName}`,
+
+            size,
+
+            pages:
+                totalPages,
+
+            generatedAt:
+                new Date()
+
+        });
+
+    }
+);
+
+
+stream.on(
+    "error",
+    error => {
+
+        reject(
+            error
+        );
+
+    }
+);
 
                 // =================================================
                 // HEADER
@@ -4047,66 +4106,54 @@ const exportPDF = async ({
                 }
 
 
-                // =================================================
-                // END PDF
-                // =================================================
+           
+stream.on(
+    "finish",
+    () => {
 
-                doc.end();
+        let size = 0;
 
+        try {
 
-                // =================================================
-                // STREAM FINISH
-                // =================================================
+            size =
+                fs.statSync(
+                    filePath
+                ).size;
 
-                stream.on(
-                    "finish",
-                    () => {
+        } catch {
 
-                        let size = 0;
+            size = 0;
 
+        }
 
-                        try {
+        resolve({
 
-                            size =
-                                fs.statSync(
-                                    filePath
-                                ).size;
+            success:
+                true,
 
-                        } catch {
+            fileName:
+                generatedFileName,
 
-                            size = 0;
+            filePath,
 
-                        }
+            downloadPath:
+                `/uploads/reports/admin/${generatedFileName}`,
 
+            downloadUrl:
+                `/uploads/reports/admin/${generatedFileName}`,
 
-                        resolve({
+            size,
 
-                            success:
-                                true,
+            pages:
+                totalPages,
 
-                            fileName:
-                                generatedFileName,
+            generatedAt:
+                new Date()
 
-                            filePath,
+        });
 
-                            downloadPath:
-                                `/uploads/reports/admin/${generatedFileName}`,
-
-                            downloadUrl:
-                                `/uploads/reports/admin/${generatedFileName}`,
-
-                            size,
-
-                            pages:
-                                totalPages,
-
-                            generatedAt:
-                                new Date()
-
-                        });
-
-                    }
-                );
+    }
+);
 
 
                 stream.on(
