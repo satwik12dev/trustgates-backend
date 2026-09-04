@@ -1,12 +1,20 @@
 // ==========================================================
-// Merchant Transaction Webhook Service
-// Razorpay Only
+// Razorpay Transaction Webhook Service
 // ==========================================================
 
 const db = require("../../config/pool");
 
 const helper = require(
     "./helper/transactionWebhook.helper"
+);
+
+
+// ==========================================================
+// Merchant Wallet Credit Service
+// ==========================================================
+
+const creditWalletService = require(
+    "../wallet/creditWallet.service"
 );
 
 
@@ -80,10 +88,10 @@ const shouldUpdateStatus = (
         return true;
     }
 
-    /*
-     * Terminal successful transaction must not move
-     * backwards because of a delayed webhook.
-     */
+
+    // ------------------------------------------------------
+    // Successful transaction cannot move backwards
+    // ------------------------------------------------------
 
     if (
         currentStatus === "SUCCESS" &&
@@ -96,10 +104,9 @@ const shouldUpdateStatus = (
     }
 
 
-    /*
-     * Failed / cancelled transactions should also
-     * not be moved backwards by lower priority events.
-     */
+    // ------------------------------------------------------
+    // Final transaction states cannot move backwards
+    // ------------------------------------------------------
 
     if (
         currentStatus === "REFUNDED" ||
@@ -337,6 +344,11 @@ const buildTransactionData = ({
         completionSource:
             "WEBHOOK",
 
+        // --------------------------------------------------
+        // IMPORTANT
+        // Merchant fee is NOT deducted from wallet here.
+        // --------------------------------------------------
+
         merchantFee:
             0,
 
@@ -356,11 +368,6 @@ const buildTransactionData = ({
 
         expiresAt:
             null,
-
-        /*
-         * Razorpay event ID is preferred for idempotency.
-         * Fallback keeps the event unique per payment/event.
-         */
 
         idempotencyKey:
             eventId ||
@@ -670,6 +677,141 @@ const storePaymentMethodDetails = async (
 
 
 // ==========================================================
+// Credit Merchant Wallet
+// ==========================================================
+
+const creditMerchantWallet = async (
+    connection,
+    merchantId,
+    transaction,
+    payment,
+    eventId
+) => {
+
+    // ------------------------------------------------------
+    // ONLY SUCCESSFUL PAYMENT
+    // ------------------------------------------------------
+
+    if (
+        transaction.status !== "SUCCESS"
+    ) {
+
+        return null;
+    }
+
+
+    // ------------------------------------------------------
+    // Full Payment Amount
+    //
+    // IMPORTANT:
+    // No merchant fee deduction.
+    // No gateway fee deduction.
+    // No GST deduction.
+    // ------------------------------------------------------
+
+    const paymentAmount =
+        convertAmount(
+            payment?.amount
+        );
+
+
+    if (
+        paymentAmount <= 0
+    ) {
+
+        throw new Error(
+            "Invalid payment amount for wallet credit."
+        );
+    }
+
+
+    // ------------------------------------------------------
+    // Wallet Idempotency
+    //
+    // Razorpay payment ID is the strongest reference.
+    // ------------------------------------------------------
+
+    const walletIdempotencyKey =
+        `PAYMENT_WALLET_CREDIT_${payment.id}`;
+
+
+    // ------------------------------------------------------
+    // Credit Merchant Wallet
+    // ------------------------------------------------------
+
+    const walletResult =
+        await creditWalletService(
+
+            connection,
+
+            {
+
+                merchantId,
+
+                amount:
+                    paymentAmount,
+
+                referenceId:
+                    transaction.transaction_id
+                        ? String(
+                            transaction.transaction_id
+                        )
+                        : payment.id,
+
+                idempotencyKey:
+                    walletIdempotencyKey,
+
+                description:
+                    "Wallet credited after successful Razorpay payment.",
+
+                metadata: {
+
+                    transactionId:
+                        transaction.transaction_id ||
+                        null,
+
+                    orderId:
+                        payment?.order_id ||
+                        null,
+
+                    gatewayPaymentId:
+                        payment?.id ||
+                        null,
+
+                    gateway:
+                        "RAZORPAY",
+
+                    event:
+                        eventId ||
+                        null,
+
+                    paymentAmount,
+
+                    merchantFee:
+                        0,
+
+                    gatewayFee:
+                        convertAmount(
+                            payment?.fee
+                        ),
+
+                    gatewayTax:
+                        convertAmount(
+                            payment?.tax
+                        )
+
+                }
+
+            }
+
+        );
+
+
+    return walletResult;
+};
+
+
+// ==========================================================
 // Process Razorpay Transaction Webhook
 // ==========================================================
 
@@ -760,10 +902,9 @@ const processTransactionWebhook = async ({
         resolveTransactionStatus(event);
 
 
-    /*
-     * Unknown Razorpay events are acknowledged by the
-     * controller/service layer without creating a transaction.
-     */
+    // ------------------------------------------------------
+    // Ignore Unsupported Events
+    // ------------------------------------------------------
 
     if (!incomingStatus) {
 
@@ -794,7 +935,9 @@ const processTransactionWebhook = async ({
     if (!paymentMethod) {
 
         throw new Error(
-            `Unsupported Razorpay payment method: ${payment?.method || "UNKNOWN"}`
+            `Unsupported Razorpay payment method: ${
+                payment?.method || "UNKNOWN"
+            }`
         );
     }
 
@@ -810,18 +953,15 @@ const processTransactionWebhook = async ({
     try {
 
         // --------------------------------------------------
-        // Start Transaction
+        // Start DB Transaction
         // --------------------------------------------------
 
         await connection.beginTransaction();
 
 
-        // --------------------------------------------------
+        // ==================================================
         // Find Existing Transaction
-        //
-        // IMPORTANT:
-        // Merchant ID is part of lookup.
-        // --------------------------------------------------
+        // ==================================================
 
         let transaction =
             await helper.findTransactionByOrderId(
@@ -832,7 +972,7 @@ const processTransactionWebhook = async ({
 
 
         // --------------------------------------------------
-        // Fallback Lookup By Gateway Payment ID
+        // Fallback By Gateway Payment ID
         // --------------------------------------------------
 
         if (!transaction) {
@@ -864,7 +1004,7 @@ const processTransactionWebhook = async ({
 
 
             // ------------------------------------------------
-            // Update Existing Transaction
+            // Update Transaction
             // ------------------------------------------------
 
             if (canUpdate) {
@@ -928,11 +1068,42 @@ const processTransactionWebhook = async ({
                             "PENDING"
                     }
                 );
+
+
+                // ------------------------------------------------
+                // IMPORTANT:
+                // Credit wallet ONLY when transaction becomes
+                // SUCCESS for the first time.
+                // ------------------------------------------------
+
+                if (
+                    incomingStatus === "SUCCESS" &&
+                    currentStatus !== "SUCCESS"
+                ) {
+
+                    await creditMerchantWallet(
+
+                        connection,
+
+                        merchantId,
+
+                        {
+                            ...transaction,
+
+                            status:
+                                "SUCCESS"
+                        },
+
+                        payment,
+
+                        eventId
+                    );
+                }
             }
 
 
             // ------------------------------------------------
-            // Commit Existing Transaction
+            // Commit
             // ------------------------------------------------
 
             await connection.commit();
@@ -999,23 +1170,68 @@ const processTransactionWebhook = async ({
 
 
         // --------------------------------------------------
-        // Create Payment Method Specific Record
+        // Create Payment Method Details
         // --------------------------------------------------
 
         await storePaymentMethodDetails(
+
             connection,
+
             transactionId,
+
             paymentMethod,
+
             payment
+
         );
 
 
         // --------------------------------------------------
-        // Commit
+        // SUCCESS → CREDIT MERCHANT WALLET
+        // --------------------------------------------------
+
+        let walletResult = null;
+
+
+        if (
+            transactionData.status === "SUCCESS"
+        ) {
+
+            walletResult =
+                await creditMerchantWallet(
+
+                    connection,
+
+                    merchantId,
+
+                    {
+
+                        transaction_id:
+                            transactionId,
+
+                        status:
+                            transactionData.status
+
+                    },
+
+                    payment,
+
+                    eventId
+
+                );
+        }
+
+
+        // --------------------------------------------------
+        // Commit Everything
         // --------------------------------------------------
 
         await connection.commit();
 
+
+        // --------------------------------------------------
+        // Response
+        // --------------------------------------------------
 
         return {
 
@@ -1035,14 +1251,42 @@ const processTransactionWebhook = async ({
             orderId,
 
             gatewayPaymentId:
-                payment.id
+                payment.id,
+
+            wallet: walletResult
+                ? {
+
+                    credited: true,
+
+                    amount:
+                        walletResult.amount,
+
+                    ledgerId:
+                        walletResult.ledgerId,
+
+                    walletId:
+                        walletResult.walletId,
+
+                    duplicate:
+                        walletResult.duplicate
+
+                }
+                : {
+
+                    credited: false
+
+                }
+
         };
 
 
     } catch (error) {
 
         // --------------------------------------------------
-        // Rollback
+        // Rollback Everything
+        //
+        // Transaction + wallet credit + ledger + audit
+        // all rollback together.
         // --------------------------------------------------
 
         try {
@@ -1051,10 +1295,7 @@ const processTransactionWebhook = async ({
 
         } catch (rollbackError) {
 
-            /*
-             * Preserve original error.
-             * Rollback failure should not hide root cause.
-             */
+            // Preserve original error.
         }
 
 
@@ -1064,7 +1305,7 @@ const processTransactionWebhook = async ({
     } finally {
 
         // --------------------------------------------------
-        // Release DB Connection
+        // Release Connection
         // --------------------------------------------------
 
         connection.release();

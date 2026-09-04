@@ -1,3 +1,5 @@
+const fs = require("fs");
+
 const {
     exportReportByTypeService,
     getAvailableReportTypesService,
@@ -115,7 +117,6 @@ const getAvailableReportTypes = async (req, res) => {
 
 };
 
-
 /**
  * ============================================================
  * EXPORT DAILY REPORT
@@ -125,10 +126,16 @@ const getAvailableReportTypes = async (req, res) => {
 
 const exportDailyReport = async (req, res) => {
 
+    let filePath = null;
+
     try {
 
-        const { error, value } =
-            exportReportValidation.validate(req.body);
+        const {
+            error,
+            value
+        } = exportReportValidation.validate(
+            req.body
+        );
 
         if (error) {
 
@@ -136,7 +143,8 @@ const exportDailyReport = async (req, res) => {
 
                 success: false,
 
-                message: error.details[0].message
+                message:
+                    error.details[0].message
 
             });
 
@@ -145,27 +153,108 @@ const exportDailyReport = async (req, res) => {
         const result =
             await exportDailyReportService(value);
 
-        return res.status(200).json({
+        filePath = result.filePath;
 
-            success: true,
+        if (!filePath) {
 
-            message: "Daily report exported successfully.",
+            return res.status(500).json({
 
-            data: result
+                success: false,
 
-        });
+                message:
+                    "Export file was not generated."
+
+            });
+
+        }
+
+        /*
+         * Send actual generated file to browser
+         */
+        return res.download(
+            filePath,
+            result.fileName,
+            (downloadError) => {
+
+                if (downloadError) {
+
+                    console.error(
+                        "Daily Report Download Error:",
+                        downloadError
+                    );
+
+                }
+
+                /*
+                 * Delete file automatically
+                 * after download/error
+                 */
+                fs.unlink(
+                    filePath,
+                    (deleteError) => {
+
+                        if (deleteError) {
+
+                            console.error(
+                                "Failed to delete daily report file:",
+                                deleteError
+                            );
+
+                        } else {
+
+                            console.log(
+                                "Daily report file deleted:",
+                                filePath
+                            );
+
+                        }
+
+                    }
+                );
+
+            }
+        );
 
     } catch (error) {
 
-        console.error("Export Daily Report Error:", error);
+        console.error(
+            "Export Daily Report Error:",
+            error
+        );
+
+        /*
+         * Cleanup if file was created
+         * but another error occurred
+         */
+        if (filePath) {
+
+            fs.unlink(
+                filePath,
+                (deleteError) => {
+
+                    if (deleteError) {
+
+                        console.error(
+                            "Failed to cleanup daily report file:",
+                            deleteError
+                        );
+
+                    }
+
+                }
+            );
+
+        }
 
         return res.status(500).json({
 
             success: false,
 
-            message: "Failed to export daily report.",
+            message:
+                "Failed to export daily report.",
 
-            error: error.message
+            error:
+                error.message
 
         });
 
