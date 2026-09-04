@@ -140,12 +140,8 @@ const exportDailyReport = async (req, res) => {
         if (error) {
 
             return res.status(400).json({
-
                 success: false,
-
-                message:
-                    error.details[0].message
-
+                message: error.details[0].message
             });
 
         }
@@ -158,22 +154,37 @@ const exportDailyReport = async (req, res) => {
         if (!filePath) {
 
             return res.status(500).json({
-
                 success: false,
+                message: "Export file was not generated."
+            });
 
-                message:
-                    "Export file was not generated."
+        }
 
+        if (!fs.existsSync(filePath)) {
+
+            return res.status(500).json({
+                success: false,
+                message: "Export file does not exist."
             });
 
         }
 
         /*
-         * Send actual generated file to browser
+         * Send actual file
          */
-        return res.download(
+        res.download(
             filePath,
             result.fileName,
+            {
+                headers: {
+                    "Content-Type":
+                        value.format === "PDF"
+                            ? "application/pdf"
+                            : value.format === "CSV"
+                                ? "text/csv"
+                                : "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                }
+            },
             (downloadError) => {
 
                 if (downloadError) {
@@ -186,8 +197,8 @@ const exportDailyReport = async (req, res) => {
                 }
 
                 /*
-                 * Delete file automatically
-                 * after download/error
+                 * Delete generated file
+                 * after response is completed
                  */
                 fs.unlink(
                     filePath,
@@ -222,11 +233,10 @@ const exportDailyReport = async (req, res) => {
             error
         );
 
-        /*
-         * Cleanup if file was created
-         * but another error occurred
-         */
-        if (filePath) {
+        if (
+            filePath &&
+            fs.existsSync(filePath)
+        ) {
 
             fs.unlink(
                 filePath,

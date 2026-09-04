@@ -91,7 +91,7 @@ const exportExcel = async ({
             success: true,
             fileName: excelFile,
             filePath,
-            downloadPath: `/uploads/reports/excel/${excelFile}`,
+            downloadPath: `/uploads/reports/admin/${excelFile}`,
         };
     } catch (error) {
         throw error;

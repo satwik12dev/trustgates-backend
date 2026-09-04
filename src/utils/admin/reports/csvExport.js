@@ -28,7 +28,7 @@ const exportCSV = async ({ fileName, headers, records }) => {
             success: true,
             fileName: csvFile,
             filePath,
-            downloadPath: `/uploads/reports/csv/${csvFile}`,
+            downloadPath: `/uploads/reports/admin/${csvFile}`,
         };
     } catch (error) {
         throw error;

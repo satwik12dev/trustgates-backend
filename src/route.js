@@ -27,8 +27,7 @@ route.use(helmet({
 
 const allowedOrigins = [
     "http://localhost:5173",
-    "https://trustgates.co.in",
-        "https://www.trustgates.co.in"
+    "https://trustgates.co.in"
 ];
 
 route.use(cors({
@@ -104,6 +103,9 @@ route.use(
     })
 );
 route.use(express.urlencoded({extended: false,limit: "1mb"}));
+
+const path = require("path");
+route.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
 
 const adminDashboardRoutes = require("./routes/admin/dashboard.routes");
 const adminMerchantDashboardRoutes = require("./routes/admin/merchant.routes")
